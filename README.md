@@ -184,7 +184,14 @@ SAGE is an **early-stage research preview**, not a production SLA or a peer-revi
 
 Sprix AI is the A2A initiative of **屿智同行**, focused on agent discovery, task matching, multi-agent scheduling, and transaction mechanisms for dependable agent-to-agent service exchange. Sprix SAGE Router is an open-source algorithmic research output of that initiative.
 
-The project is led by **Yichen Wang, CTO of 屿智同行**. Company attribution describes the project's origin; this public repository remains a research preview and does not expose proprietary production systems or data.
+Company attribution describes the project's origin; this public repository remains a research preview and does not expose proprietary production systems or data.
+
+## Team & project leadership
+
+- **Yonghao Zhang** — CEO of 屿智同行; Master's degree in Computer Science from Tsinghua University.
+- **Yichen Wang** — CTO of 屿智同行; Sprix AI project lead and SAGE algorithm designer.
+
+Additional community contributions are credited through their commits, pull requests, and the repository's [contributors graph](https://github.com/wang2122/sprix-sage-router/graphs/contributors).
 
 ## Community and governance
 
