@@ -1,0 +1,29 @@
+name: Feature request
+description: Propose an algorithm, evaluation, or A2A integration improvement
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user, research, or operational problem should be solved?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed approach
+      description: Describe the algorithm or interface and its expected tradeoffs.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence and references
+      description: Link related papers, benchmarks, protocols, or implementations.
+  - type: textarea
+    id: evaluation
+    attributes:
+      label: Evaluation plan
+      description: How should we know the change works and remains safe?

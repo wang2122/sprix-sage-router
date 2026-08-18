@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/wang2122/sprix-sage-router/security
+    about: Please review the security policy and use a private reporting channel.
