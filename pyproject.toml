@@ -9,8 +9,25 @@ description = "State-aware SELF/COLLABORATE/HANDOFF routing for A2A agent networ
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
-authors = [{name = "Yichen Wang"}]
+authors = [{name = "Sprix AI at 屿智同行"}]
+maintainers = [{name = "Yichen Wang"}]
 keywords = ["a2a", "multi-agent", "routing", "task-matching", "agent-collaboration"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+[project.urls]
+Homepage = "https://github.com/wang2122/sprix-sage-router"
+Repository = "https://github.com/wang2122/sprix-sage-router"
+Issues = "https://github.com/wang2122/sprix-sage-router/issues"
 
 [tool.setuptools]
 py-modules = ["sprix_sage"]

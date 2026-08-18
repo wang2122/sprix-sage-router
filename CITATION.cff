@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use Sprix SAGE Router in research, please cite this software."
+title: "Sprix SAGE Router: State-Aware Graph Exchange for A2A Task Matching"
+type: software
+authors:
+  - family-names: Wang
+    given-names: Yichen
+    affiliation: "Sprix AI at 屿智同行"
+version: 0.1.0
+date-released: 2026-08-18
+repository-code: "https://github.com/wang2122/sprix-sage-router"
+license: MIT
+keywords:
+  - agent-to-agent
+  - multi-agent systems
+  - task routing
+  - agent collaboration
+  - scheduling
