@@ -1,0 +1,49 @@
+name: Bug report
+description: Report reproducible incorrect routing or implementation behavior
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: Thank you for helping improve Sprix SAGE Router. Do not include credentials, private traces, or personal data.
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Include the smallest safe code sample or task configuration that reproduces the issue.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Revision or version
+      placeholder: Commit SHA or release tag
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Affected routing mode
+      options:
+        - SELF
+        - COLLABORATE
+        - HANDOFF
+        - Eligibility or shared scoring
+        - Unknown
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Python version, operating system, and relevant configuration.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Safety check
+      options:
+        - label: I removed credentials, private traces, proprietary Agent Cards, and personal data.
+          required: true
