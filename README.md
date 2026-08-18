@@ -51,17 +51,17 @@ Task + incumbent state + A2A Agent Cards + bids
 
 The central design is a **capability requirement graph**. For requirement \(r\), the coverage of team \(S\) is:
 
-\[
+$$
 C_r(S)=1-\prod_{a\in S}(1-q_{a,r})
-\]
+$$
 
 where \(q_{a,r}\) is the agent's declared capability discounted by observed reliability and bid calibration. This noisy-OR form rewards complementary coverage while producing diminishing returns for redundant agents. A greedy team builder therefore gets an efficient approximation to the best budgeted team.
 
 Each route is ranked by:
 
-\[
+$$
 U(m,S)=V\hat p(\text{success}\mid x,m,S)-\lambda_c C-\lambda_l L-\lambda_r R-\lambda_h H-\lambda_o O
-\]
+$$
 
 where \(H\) is progress-dependent handoff loss and \(O\) is collaboration overhead. Details are in [ALGORITHM.md](ALGORITHM.md).
 

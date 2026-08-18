@@ -32,9 +32,9 @@ Cold-start agents remain selectable, but unsupported confidence claims are shrun
 
 For team \(S\), noisy-OR coverage of requirement \(r\) is:
 
-\[
+$$
 C_r(S)=1-\prod_{a\in S}(1-q_{a,r})
-\]
+$$
 
 Weighted total coverage is \(C(S)=\sum_r w_rC_r(S)/\sum_rw_r\). Minimum requirement thresholds produce a bottleneck factor, so a team cannot hide one missing critical skill behind high average coverage.
 
@@ -44,9 +44,9 @@ The noisy-OR set function is monotone and submodular under fixed non-negative ca
 
 Skill-vector cosine similarity estimates redundancy. Pairwise Beta posteriors estimate whether two agents work well together. The success estimate is:
 
-\[
+$$
 \hat p=\operatorname{clip}(C(S)B(S)+\eta G(S)-\rho D(S),0,1)
-\]
+$$
 
 where \(B\) is the critical-requirement bottleneck, \(G\) is centered pair synergy, and \(D\) is average skill redundancy.
 
@@ -54,9 +54,9 @@ where \(B\) is the critical-requirement bottleneck, \(G\) is centered pair syner
 
 The utility of a feasible route is:
 
-\[
+$$
 U=V\hat p-\lambda_c\bar C-\lambda_l\bar L-\lambda_rR-\lambda_hH-\lambda_oO
-\]
+$$
 
 - \(\bar C\): cost normalized by task budget.
 - \(\bar L\): latency normalized by deadline.
