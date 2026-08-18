@@ -1,4 +1,4 @@
-from sprix_sage import Agent, Bid, Requirement, SAGERouter, Task
+from sprix_sage import Agent, Bid, ExecutionOutcome, Requirement, SAGERouter, Task
 
 
 agents = [
@@ -29,8 +29,8 @@ task = Task(
     "secure-feature",
     requirements=(
         Requirement("planning", weight=0.25, minimum=0.60),
-        Requirement("coding", weight=0.45, minimum=0.75),
-        Requirement("security", weight=0.30, minimum=0.75),
+        Requirement("coding", weight=0.45, minimum=0.75, depends_on=("planning",)),
+        Requirement("security", weight=0.30, minimum=0.75, depends_on=("coding",)),
     ),
     value=1.0,
     budget=0.30,
@@ -54,4 +54,18 @@ print(f"utility    : {decision.utility:.3f}")
 print(f"p(success) : {decision.success_probability:.3f}")
 print(f"cost       : {decision.cost:.3f}")
 print(f"latency    : {decision.latency_ms:.0f} ms")
+print(f"assignments: {dict(decision.assignments)}")
+print(f"topology   : {decision.topology}")
 print(f"reason     : {decision.explanation}")
+
+# The router learns from granular evidence rather than assigning identical
+# credit to every team member.
+router.record_outcome(
+    decision,
+    ExecutionOutcome(
+        success=0.88,
+        requirement_scores={"planning": 0.94, "coding": 0.84, "security": 0.89},
+        actual_cost=0.19,
+        actual_latency_ms=1900,
+    ),
+)

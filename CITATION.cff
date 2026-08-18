@@ -6,7 +6,7 @@ authors:
   - family-names: Wang
     given-names: Yichen
     affiliation: "Sprix AI at 屿智同行"
-version: 0.1.0
+version: 0.2.0
 date-released: 2026-08-18
 repository-code: "https://github.com/wang2122/sprix-sage-router"
 license: MIT
