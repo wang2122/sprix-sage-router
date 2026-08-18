@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sprix-sage-router"
+version = "0.1.0"
+description = "State-aware SELF/COLLABORATE/HANDOFF routing for A2A agent networks"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [{name = "Yichen Wang"}]
+keywords = ["a2a", "multi-agent", "routing", "task-matching", "agent-collaboration"]
+
+[tool.setuptools]
+py-modules = ["sprix_sage"]
