@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="610" viewBox="0 0 1200 610" role="img" aria-labelledby="title desc">
+  <title id="title">Conceptual SAGE tri-mode policy map</title>
+  <desc id="desc">A conceptual phase diagram showing how incumbent sufficiency, specialist advantage, progress and context transfer shape self, collaboration and handoff decisions.</desc>
+  <defs>
+    <linearGradient id="self" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#FFD8CC"/><stop offset="1" stop-color="#F6A896"/></linearGradient>
+    <linearGradient id="collab" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#FFE9A8"/><stop offset="1" stop-color="#E8B84A"/></linearGradient>
+    <linearGradient id="handoff" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#D8C8F0"/><stop offset="1" stop-color="#9274BF"/></linearGradient>
+    <marker id="a" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9Z" fill="#3B3250"/></marker>
+    <style>.t{font-family:Inter,Arial,sans-serif;fill:#2F2840}.white{fill:#FFFDF9}.h{font-weight:700}.body{font-size:16px}.small{font-size:14px}.axis{stroke:#3B3250;stroke-width:2.4;marker-end:url(#a)}</style>
+  </defs>
+  <rect width="1200" height="610" rx="28" fill="#FBF7F0"/>
+  <text x="54" y="58" class="t h" font-size="28">Conceptual tri-mode policy map</text>
+  <text x="54" y="87" class="t body" opacity=".68">The learned utility determines the exact boundary; this map explains the dominant routing forces.</text>
+
+  <g transform="translate(118 130)">
+    <rect width="670" height="380" rx="18" fill="#FFFDF9" stroke="#E2D7C9"/>
+    <path d="M0 0H670V380H0Z" fill="url(#self)" opacity=".83"/>
+    <path d="M0 380V172C105 140 198 142 288 180C387 222 489 230 670 188V380Z" fill="url(#collab)" opacity=".94"/>
+    <path d="M0 380V310C148 263 278 279 386 326C486 369 571 339 670 260V380Z" fill="url(#handoff)" opacity=".98"/>
+    <path d="M0 172C105 140 198 142 288 180C387 222 489 230 670 188" fill="none" stroke="#FFFDF9" stroke-width="5" opacity=".9"/>
+    <path d="M0 310C148 263 278 279 386 326C486 369 571 339 670 260" fill="none" stroke="#FFFDF9" stroke-width="5" opacity=".9"/>
+
+    <g class="t h">
+      <text x="470" y="78" font-size="28">SELF</text>
+      <text x="445" y="105" class="body">incumbent remains sufficient</text>
+      <text x="225" y="235" font-size="27">COLLABORATE</text>
+      <text x="218" y="260" class="body">complementary skills justify coordination</text>
+      <text x="520" y="344" text-anchor="middle" font-size="27" class="white">HANDOFF</text>
+      <text x="520" y="369" text-anchor="middle" class="body white">specialist gain survives transfer loss</text>
+    </g>
+
+    <circle cx="139" cy="104" r="8" fill="#2F2840"/><path d="M145 109L238 182" stroke="#2F2840" stroke-width="2" stroke-dasharray="6 6"/>
+    <circle cx="375" cy="245" r="8" fill="#2F2840"/><path d="M381 250L468 317" stroke="#2F2840" stroke-width="2" stroke-dasharray="6 6"/>
+
+    <path d="M0 400V-14" class="axis"/>
+    <path d="M-18 380H694" class="axis"/>
+    <text x="335" y="432" text-anchor="middle" class="t h body">Specialist advantage and capability gap →</text>
+    <text transform="translate(-63 190) rotate(-90)" text-anchor="middle" class="t h body">Incumbent sufficiency and retained context →</text>
+    <text x="0" y="423" class="t small" opacity=".65">low</text><text x="648" y="423" class="t small" opacity=".65">high</text>
+    <text x="-39" y="381" class="t small" opacity=".65">low</text><text x="-44" y="7" class="t small" opacity=".65">high</text>
+  </g>
+
+  <g transform="translate(838 132)">
+    <rect width="310" height="378" rx="20" fill="#FFFDF9" stroke="#E2D7C9"/>
+    <text x="26" y="42" class="t h" font-size="20">Boundary shifts</text>
+    <g transform="translate(26 72)">
+      <circle cx="22" cy="22" r="22" fill="#F15A4A"/><path d="M22 10v13l9 7" fill="none" stroke="white" stroke-width="3" stroke-linecap="round"/>
+      <text x="58" y="17" class="t h body">More progress</text>
+      <text x="58" y="40" class="t small" opacity=".7">raises switching cost</text>
+    </g>
+    <path d="M26 132H284" stroke="#E7DDD0"/>
+    <g transform="translate(26 152)">
+      <circle cx="22" cy="22" r="22" fill="#7656A8"/><path d="M11 23h22M25 14l9 9-9 9" fill="none" stroke="white" stroke-width="3"/>
+      <text x="58" y="17" class="t h body">Better transfer</text>
+      <text x="58" y="40" class="t small" opacity=".7">makes handoff easier</text>
+    </g>
+    <path d="M26 212H284" stroke="#E7DDD0"/>
+    <g transform="translate(26 232)">
+      <circle cx="22" cy="22" r="22" fill="#E8B84A"/><path d="M11 22h22M22 11v22" stroke="#2F2840" stroke-width="3"/>
+      <text x="58" y="17" class="t h body">More complementarity</text>
+      <text x="58" y="40" class="t small" opacity=".7">favors collaboration</text>
+    </g>
+    <path d="M26 292H284" stroke="#E7DDD0"/>
+    <g transform="translate(26 312)">
+      <circle cx="22" cy="22" r="22" fill="#2F2840"/><path d="M10 22h24M15 15l-7 7 7 7M29 15l7 7-7 7" fill="none" stroke="white" stroke-width="2.5"/>
+      <text x="58" y="17" class="t h body">Tighter constraints</text>
+      <text x="58" y="40" class="t small" opacity=".7">prune modes before ranking</text>
+    </g>
+  </g>
+
+  <rect x="118" y="573" width="1030" height="28" rx="10" fill="#2F2840"/>
+  <text x="633" y="592" text-anchor="middle" class="t white small">Conceptual interpretation only — actual decisions use calibrated success, feasibility checks, DAG scheduling, and uncertainty-aware utility.</text>
+</svg>

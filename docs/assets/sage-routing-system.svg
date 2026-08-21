@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="650" viewBox="0 0 1200 650" role="img" aria-labelledby="title desc">
+  <title id="title">SAGE state-aware routing system</title>
+  <desc id="desc">A publication-style system diagram showing live task state and agent evidence entering a constrained tri-mode router, followed by execution and online learning.</desc>
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="5" stdDeviation="7" flood-color="#3B2D56" flood-opacity="0.12"/>
+    </filter>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0 0L10 5L0 10Z" fill="#6C5B7B"/>
+    </marker>
+    <linearGradient id="route" x1="0" x2="1">
+      <stop offset="0" stop-color="#FFF4E8"/>
+      <stop offset="1" stop-color="#F3EDFF"/>
+    </linearGradient>
+    <style>
+      .t{font-family:Inter,Arial,sans-serif;fill:#2F2840}.white{fill:#FFFDF9}.pale{fill:#F5EEDB}.h{font-weight:700}.small{font-size:14px}.body{font-size:16px}.label{font-size:13px;font-weight:700;letter-spacing:1.3px}.edge{fill:none;stroke:#6C5B7B;stroke-width:2.4;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1200" height="650" rx="28" fill="#FBF7F0"/>
+  <circle cx="1130" cy="76" r="92" fill="#F6C6B7" opacity=".32"/>
+  <circle cx="80" cy="590" r="118" fill="#C9B8EA" opacity=".26"/>
+
+  <text x="58" y="62" class="t h" font-size="28">SAGE: state-aware routing above the A2A execution layer</text>
+  <text x="58" y="91" class="t body" opacity=".68">Constrain first, compare three ownership modes, then learn from auditable execution evidence.</text>
+
+  <g filter="url(#shadow)">
+    <rect x="52" y="132" width="244" height="390" rx="22" fill="#FFFDF9" stroke="#E7D9C8"/>
+    <rect x="72" y="152" width="204" height="40" rx="12" fill="#F15A4A"/>
+    <text x="174" y="178" text-anchor="middle" fill="white" class="label">LIVE ROUTING EVENT</text>
+
+    <rect x="76" y="220" width="196" height="76" rx="14" fill="#FFF1EA" stroke="#F4B8A9"/>
+    <path d="M96 265h22v-25h23v18h25v-12h25" fill="none" stroke="#F15A4A" stroke-width="3"/>
+    <circle cx="96" cy="265" r="5" fill="#F15A4A"/><circle cx="141" cy="240" r="5" fill="#F15A4A"/><circle cx="166" cy="258" r="5" fill="#F15A4A"/><circle cx="191" cy="246" r="5" fill="#F15A4A"/>
+    <text x="208" y="245" class="t h body">Task DAG</text>
+    <text x="208" y="268" class="t small" opacity=".68">requirements</text>
+
+    <rect x="76" y="312" width="196" height="76" rx="14" fill="#F5F0FF" stroke="#CCBCE6"/>
+    <circle cx="111" cy="350" r="18" fill="#7656A8"/><path d="M103 350l6 6 12-15" fill="none" stroke="white" stroke-width="3"/>
+    <text x="141" y="343" class="t h body">Execution state</text>
+    <text x="141" y="366" class="t small" opacity=".68">progress · failures</text>
+
+    <rect x="76" y="404" width="196" height="92" rx="14" fill="#FFF9E9" stroke="#E8C977"/>
+    <g transform="translate(95 423)"><circle cx="18" cy="18" r="15" fill="#E8B84A"/><circle cx="55" cy="18" r="15" fill="#F15A4A"/><circle cx="92" cy="18" r="15" fill="#7656A8"/><path d="M18 36v13M55 36v13M92 36v13" stroke="#6C5B7B" stroke-width="2"/></g>
+    <text x="113" y="478" text-anchor="middle" class="t h small">Agent Cards</text>
+    <text x="215" y="478" text-anchor="middle" class="t h small">live bids</text>
+  </g>
+
+  <path d="M296 327H350" class="edge"/>
+
+  <g filter="url(#shadow)">
+    <rect x="350" y="132" width="494" height="390" rx="22" fill="url(#route)" stroke="#DCCFEA"/>
+    <text x="378" y="171" class="t label" fill="#7656A8">CONSTRAINED TRI-MODE POLICY</text>
+    <rect x="378" y="194" width="438" height="55" rx="13" fill="#2F2840"/>
+    <text x="597" y="218" text-anchor="middle" class="t white h body">Hard feasibility gate</text>
+    <text x="597" y="238" text-anchor="middle" class="t pale small">permissions · budget · deadline · availability</text>
+
+    <path d="M597 249V278M597 278H442V296M597 278V296M597 278H752V296" fill="none" stroke="#6C5B7B" stroke-width="2"/>
+    <g>
+      <rect x="382" y="296" width="120" height="86" rx="16" fill="#F15A4A"/>
+      <text x="442" y="327" text-anchor="middle" class="t white h body">SELF</text>
+      <text x="442" y="351" text-anchor="middle" class="t white small">retain context</text>
+      <text x="442" y="369" text-anchor="middle" class="t white small">one owner</text>
+
+      <rect x="527" y="296" width="140" height="86" rx="16" fill="#E8B84A"/>
+      <text x="597" y="327" text-anchor="middle" fill="#2F2840" class="t h body">COLLABORATE</text>
+      <text x="597" y="351" text-anchor="middle" fill="#493E37" class="t small">beam-search team</text>
+      <text x="597" y="369" text-anchor="middle" fill="#493E37" class="t small">DAG roles</text>
+
+      <rect x="692" y="296" width="120" height="86" rx="16" fill="#7656A8"/>
+      <text x="752" y="327" text-anchor="middle" class="t white h body">HANDOFF</text>
+      <text x="752" y="351" text-anchor="middle" class="t white small">specialist owner</text>
+      <text x="752" y="369" text-anchor="middle" class="t white small">transfer cost</text>
+    </g>
+    <path d="M442 382v29M597 382v29M752 382v29M442 411h310M597 411v20" fill="none" stroke="#6C5B7B" stroke-width="2"/>
+    <rect x="401" y="431" width="392" height="64" rx="15" fill="#FFFDF9" stroke="#D9CBE7"/>
+    <text x="597" y="456" text-anchor="middle" class="t h body">Calibrated success × task value − penalties</text>
+    <text x="597" y="478" text-anchor="middle" class="t small" opacity=".68">cost · latency · risk · transfer · coordination · uncertainty</text>
+  </g>
+
+  <path d="M844 327H898" class="edge"/>
+
+  <g filter="url(#shadow)">
+    <rect x="898" y="132" width="250" height="390" rx="22" fill="#FFFDF9" stroke="#E7D9C8"/>
+    <rect x="920" y="152" width="206" height="40" rx="12" fill="#7656A8"/>
+    <text x="1023" y="178" text-anchor="middle" fill="white" class="label">EXECUTE + LEARN</text>
+
+    <rect x="922" y="219" width="202" height="112" rx="16" fill="#F5F0FF" stroke="#CCBCE6"/>
+    <text x="1023" y="246" text-anchor="middle" class="t h body">Inspectable plan</text>
+    <path d="M955 288h37M1003 288h37M1051 288h37" stroke="#7656A8" stroke-width="3"/>
+    <circle cx="955" cy="288" r="10" fill="#F15A4A"/><circle cx="1003" cy="288" r="10" fill="#E8B84A"/><circle cx="1051" cy="288" r="10" fill="#7656A8"/><circle cx="1088" cy="288" r="10" fill="#2F2840"/>
+    <text x="1023" y="318" text-anchor="middle" class="t small" opacity=".68">assignment · topology · rationale</text>
+
+    <rect x="922" y="351" width="202" height="145" rx="16" fill="#FFF1EA" stroke="#F4B8A9"/>
+    <text x="1023" y="378" text-anchor="middle" class="t h body">Evidence updates</text>
+    <g class="t small"><text x="946" y="409">capability trust</text><text x="946" y="434">pair synergy</text><text x="946" y="459">bid fidelity</text></g>
+    <g fill="#F15A4A"><rect x="1060" y="398" width="40" height="8" rx="4"/><rect x="1060" y="423" width="28" height="8" rx="4"/><rect x="1060" y="448" width="34" height="8" rx="4"/></g>
+    <path d="M1023 496C1023 568 597 568 597 522" class="edge"/>
+  </g>
+
+  <g transform="translate(52 568)">
+    <rect width="1096" height="48" rx="14" fill="#2F2840"/>
+    <text x="548" y="30" text-anchor="middle" class="t white body"><tspan font-weight="700">Policy boundary:</tspan> A2A transports tasks; SAGE selects a feasible executor configuration and records why.</text>
+  </g>
+</svg>

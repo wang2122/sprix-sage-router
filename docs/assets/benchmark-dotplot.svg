@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="640" viewBox="0 0 1200 640" role="img" aria-labelledby="title desc">
+  <title id="title">Synthetic benchmark comparison for SAGE routing strategies</title>
+  <desc id="desc">A publication-style dot plot comparing quality, common utility and deadline miss rates across five routing strategies over 2500 synthetic tasks and five seeds.</desc>
+  <defs>
+    <style>.t{font-family:Inter,Arial,sans-serif;fill:#2F2840}.h{font-weight:700}.small{font-size:13px}.body{font-size:15px}.grid{stroke:#DDD4C8;stroke-width:1}.err{stroke:#2F2840;stroke-width:2}.tick{font-size:12px;fill:#776E80}</style>
+  </defs>
+  <rect width="1200" height="640" rx="28" fill="#FBF7F0"/>
+  <text x="54" y="58" class="t h" font-size="28">External synthetic benchmark</text>
+  <text x="54" y="88" class="t body" opacity=".68">2,500 tasks · 5 deterministic seeds · mean ± population standard deviation</text>
+  <g transform="translate(54 123)">
+    <rect width="1092" height="445" rx="22" fill="#FFFDF9" stroke="#E2D7C9"/>
+
+    <rect x="14" y="322" width="1064" height="62" rx="14" fill="#F5F0FF"/>
+    <g class="t body">
+      <text x="24" y="91">Incumbent only</text>
+      <text x="24" y="157">Advertised-skill solo</text>
+      <text x="24" y="223">Feasible solo oracle</text>
+      <text x="24" y="289">Static SAGE</text>
+      <text x="24" y="355" class="h">Online SAGE</text>
+    </g>
+    <g transform="translate(222 0)">
+      <text x="132" y="38" text-anchor="middle" class="t h" font-size="18">Quality ↑</text>
+      <text x="132" y="58" text-anchor="middle" class="t small" opacity=".65">0.45–0.70</text>
+      <g class="grid"><path d="M20 66V382M132 66V382M244 66V382"/></g>
+      <g class="t tick"><text x="20" y="407" text-anchor="middle">0.45</text><text x="132" y="407" text-anchor="middle">0.575</text><text x="244" y="407" text-anchor="middle">0.70</text></g>
+      <!-- quality values: 0.507, 0.558, 0.553, 0.591, 0.634 -->
+      <g class="err"><path d="M68 84h6M71 79v10M112.5 150h9M117 145v10M107.5 216h9M112 211v10M140.5 282h13M147 277v10M179.5 348h11M185 343v10"/></g>
+      <g stroke="#FFFDF9" stroke-width="3"><circle cx="71" cy="84" r="9" fill="#A99FAE"/><circle cx="117" cy="150" r="9" fill="#A99FAE"/><circle cx="112" cy="216" r="9" fill="#A99FAE"/><circle cx="147" cy="282" r="10" fill="#E8B84A"/><circle cx="185" cy="348" r="12" fill="#7656A8"/></g>
+      <g class="t small h"><text x="83" y="89">.507</text><text x="129" y="155">.558</text><text x="124" y="221">.553</text><text x="159" y="287">.591</text><text x="201" y="353">.634</text></g>
+    </g>
+
+    <g transform="translate(500 0)">
+      <text x="132" y="38" text-anchor="middle" class="t h" font-size="18">Common utility ↑</text>
+      <text x="132" y="58" text-anchor="middle" class="t small" opacity=".65">0.35–0.52</text>
+      <g class="grid"><path d="M20 66V382M132 66V382M244 66V382"/></g>
+      <g class="t tick"><text x="20" y="407" text-anchor="middle">0.35</text><text x="132" y="407" text-anchor="middle">0.435</text><text x="244" y="407" text-anchor="middle">0.52</text></g>
+      <!-- utility values: 0.389, 0.435, 0.440, 0.467, 0.487 -->
+      <g class="err"><path d="M68.5 84h5M71 79v10M125.5 150h13M132 145v10M132.5 216h13M139 211v10M168 282h18M177 277v10M190 348h16M198 343v10"/></g>
+      <g stroke="#FFFDF9" stroke-width="3"><circle cx="71" cy="84" r="9" fill="#A99FAE"/><circle cx="132" cy="150" r="9" fill="#A99FAE"/><circle cx="139" cy="216" r="9" fill="#A99FAE"/><circle cx="177" cy="282" r="10" fill="#E8B84A"/><circle cx="198" cy="348" r="12" fill="#7656A8"/></g>
+      <g class="t small h"><text x="83" y="89">.389</text><text x="144" y="155">.435</text><text x="151" y="221">.440</text><text x="189" y="287">.467</text><text x="214" y="353">.487</text></g>
+    </g>
+
+    <g transform="translate(778 0)">
+      <text x="132" y="38" text-anchor="middle" class="t h" font-size="18">Deadline miss ↓</text>
+      <text x="132" y="58" text-anchor="middle" class="t small" opacity=".65">0–30%</text>
+      <g class="grid"><path d="M20 66V382M132 66V382M244 66V382"/></g>
+      <g class="t tick"><text x="20" y="407" text-anchor="middle">0%</text><text x="132" y="407" text-anchor="middle">15%</text><text x="244" y="407" text-anchor="middle">30%</text></g>
+      <!-- deadline miss values: 26.4, 11.9, 0, 0, 0.2 -->
+      <g stroke="#FFFDF9" stroke-width="3"><circle cx="217" cy="84" r="9" fill="#F15A4A"/><circle cx="109" cy="150" r="9" fill="#A99FAE"/><circle cx="20" cy="216" r="9" fill="#A99FAE"/><circle cx="20" cy="282" r="10" fill="#E8B84A"/><circle cx="21.5" cy="348" r="12" fill="#7656A8"/></g>
+      <g class="t small h"><text x="165" y="89">26.4%</text><text x="121" y="155">11.9%</text><text x="34" y="221">0.0%</text><text x="34" y="287">0.0%</text><text x="38" y="353">0.2%</text></g>
+    </g>
+  </g>
+
+  <g transform="translate(54 590)">
+    <circle cx="8" cy="8" r="7" fill="#7656A8"/><text x="22" y="13" class="t small">online SAGE</text>
+    <circle cx="142" cy="8" r="7" fill="#E8B84A"/><text x="156" y="13" class="t small">static SAGE</text>
+    <circle cx="270" cy="8" r="7" fill="#A99FAE"/><text x="284" y="13" class="t small">single-agent baselines</text>
+    <text x="1092" y="13" text-anchor="end" class="t small" opacity=".7">Synthetic evidence, not a real-world superiority claim</text>
+  </g>
+</svg>
