@@ -658,7 +658,18 @@ class SAGERouter:
             raise RuntimeError("task is already complete")
 
     def _prepare_bids(self, task: Task, bids: Iterable[Bid] | None) -> dict[str, Bid]:
-        supplied = {bid.agent_id: bid for bid in bids or () if bid.task_id == task.task_id}
+        supplied: dict[str, Bid] = {}
+        for bid in bids or ():
+            if bid.task_id != task.task_id:
+                raise ValueError(
+                    f"bid for agent {bid.agent_id!r} targets task {bid.task_id!r}, "
+                    f"expected {task.task_id!r}"
+                )
+            if bid.agent_id not in self.agents:
+                raise ValueError(f"bid references unknown agent: {bid.agent_id!r}")
+            if bid.agent_id in supplied:
+                raise ValueError(f"duplicate bid for agent: {bid.agent_id!r}")
+            supplied[bid.agent_id] = bid
         return {
             agent_id: supplied.get(
                 agent_id,

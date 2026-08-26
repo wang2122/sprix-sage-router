@@ -54,6 +54,10 @@ plan = execution_plan(task, trace.selected)
 transport_payload = plan.to_dict()
 ```
 
+Bid ingestion is fail-closed: every supplied bid must target the routed task,
+reference a registered agent, and be the only bid for that agent. Invalid bid
+batches raise `ValueError` instead of being silently ignored or overwritten.
+
 The execution plan contains ownership, executors, requirement assignments, dependency edges, communication edges, estimated cost and latency, and the routing rationale. It intentionally contains no credentials and performs no network request.
 
 ## Transport responsibilities
