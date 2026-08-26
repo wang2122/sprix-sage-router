@@ -43,8 +43,8 @@ class Requirement:
     def __post_init__(self) -> None:
         if not self.name:
             raise ValueError("requirement name must not be empty")
-        if self.weight <= 0:
-            raise ValueError("requirement weight must be positive")
+        if not math.isfinite(self.weight) or self.weight <= 0:
+            raise ValueError("requirement weight must be finite and positive")
         if not 0 <= self.minimum <= 1:
             raise ValueError("requirement minimum must be in [0, 1]")
         if self.name in self.depends_on:
