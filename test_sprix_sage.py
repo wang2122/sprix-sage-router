@@ -50,6 +50,12 @@ class SAGERouterTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "agent IDs must be unique: duplicate"):
             SAGERouter(agents, "duplicate")
 
+    def test_assignment_beam_width_must_be_positive(self) -> None:
+        agents = [Agent("current", {"planning": 0.95}, 0.02, 300)]
+
+        with self.assertRaisesRegex(ValueError, "beam widths positive"):
+            SAGERouter(agents, "current", assignment_beam_width=0)
+
     def test_self_for_easy_task_with_expensive_peer(self) -> None:
         agents = [
             Agent("current", {"writing": 0.94}, 0.02, 300),
@@ -278,6 +284,56 @@ class SAGERouterTests(unittest.TestCase):
         decision = SAGERouter(agents, "planner").route(task)
         self.assertNotEqual(decision.mode, Mode.COLLABORATE)
         self.assertLessEqual(decision.latency_ms, task.deadline_ms)
+
+    def test_assignment_search_parallelizes_independent_requirements(self) -> None:
+        agents = [
+            Agent("current", {"research": 0.95, "coding": 0.95}, 0.0, 600),
+            Agent("peer", {"research": 0.90, "coding": 0.90}, 0.0, 600),
+        ]
+        task = Task(
+            "parallel-deadline",
+            (
+                Requirement("research", 0.5, 0.55),
+                Requirement("coding", 0.5, 0.55),
+            ),
+            value=5.0,
+            budget=1.0,
+            deadline_ms=680,
+            coordination_overhead=0.10,
+        )
+
+        decision = SAGERouter(
+            agents,
+            "current",
+            max_collaborators=1,
+            assignment_beam_width=4,
+        ).route(task)
+
+        self.assertEqual(decision.mode, Mode.COLLABORATE)
+        self.assertEqual(set(decision.assignments.values()), {"current", "peer"})
+        self.assertLessEqual(decision.latency_ms, task.deadline_ms)
+        self.assertEqual(decision.diagnostics["assignment_search_candidates"], 4.0)
+
+    def test_single_agent_assignment_remains_deterministic(self) -> None:
+        agents = [Agent("current", {"plan": 0.9, "build": 0.8}, 0.02, 300)]
+        task = Task(
+            "single-agent",
+            (
+                Requirement("plan", 0.4),
+                Requirement("build", 0.6, depends_on=("plan",)),
+            ),
+            budget=0.20,
+            deadline_ms=2000,
+        )
+
+        decision = SAGERouter(
+            agents, "current", assignment_beam_width=1
+        ).route(task)
+
+        self.assertEqual(
+            decision.assignments, {"plan": "current", "build": "current"}
+        )
+        self.assertEqual(decision.diagnostics["assignment_search_candidates"], 1.0)
 
     def test_contextual_reliability_does_not_bleed_across_skills(self) -> None:
         agents = [Agent("current", {"code": 0.9, "writing": 0.9}, 0.02, 300)]
