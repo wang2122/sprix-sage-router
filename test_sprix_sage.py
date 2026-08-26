@@ -1,4 +1,5 @@
 import json
+import math
 import unittest
 
 from sprix_sage import (
@@ -132,6 +133,17 @@ class SAGERouterTests(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "duplicate bid for agent: 'current'"):
             SAGERouter(agents, "current").route(task, bids=bids)
+
+    def test_bid_rejects_nan_cost_and_latency(self) -> None:
+        invalid_quotes = ((math.nan, 250), (0.01, math.nan))
+
+        for quoted_cost, promised_latency_ms in invalid_quotes:
+            with self.subTest(
+                quoted_cost=quoted_cost,
+                promised_latency_ms=promised_latency_ms,
+            ):
+                with self.assertRaisesRegex(ValueError, "non-negative"):
+                    Bid("peer", "code", quoted_cost, promised_latency_ms)
 
     def test_outcomes_update_reliability_and_pair_synergy(self) -> None:
         agents = [

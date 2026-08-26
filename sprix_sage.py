@@ -160,7 +160,7 @@ class Bid:
     confidence: float = 0.7
 
     def __post_init__(self) -> None:
-        if self.quoted_cost < 0 or self.promised_latency_ms < 0:
+        if not self.quoted_cost >= 0 or not self.promised_latency_ms >= 0:
             raise ValueError("bid cost and latency must be non-negative")
         if not 0 <= self.confidence <= 1:
             raise ValueError("bid confidence must be in [0, 1]")
