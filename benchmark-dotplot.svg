@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="680" viewBox="0 0 1200 680" role="img" aria-labelledby="title desc">
+  <title id="title">Synthetic benchmark comparison for SAGE routing strategies</title>
+  <desc id="desc">A publication-style three-panel dot plot comparing quality, common utility, and deadline miss rates across five routing strategies over 2500 synthetic tasks and five seeds.</desc>
+  <defs>
+    <style>
+      .t{font-family:Arial,Helvetica,sans-serif;fill:#172033}.title{font-size:30px;font-weight:700}.subtitle{font-size:17px;fill:#526071}.body{font-size:17px}.small{font-size:15px;fill:#526071}.tick{font-size:14px;fill:#526071}.panel-title{font-size:19px;font-weight:700}.grid{stroke:#D8E0EA;stroke-width:1}.err{stroke:#475569;stroke-width:2}.baseline{fill:#94A3B8}.static{fill:#D97706}.online{fill:#0F766E}.label{font-size:15px;font-weight:700}
+    </style>
+  </defs>
+
+  <rect width="1200" height="680" fill="#FFFFFF"/>
+  <text x="50" y="52" class="t title">External synthetic benchmark</text>
+  <text x="50" y="82" class="t subtitle">2,500 tasks · 5 deterministic seeds · mean ± population standard deviation</text>
+
+  <rect x="50" y="125" width="1100" height="455" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.5"/>
+  <rect x="65" y="489" width="1070" height="62" fill="#ECFDF5"/>
+
+  <!-- Strategy labels -->
+  <g class="t body">
+    <text x="78" y="225">Incumbent only</text>
+    <text x="78" y="300">Advertised-skill solo</text>
+    <text x="78" y="375">Feasible solo oracle</text>
+    <text x="78" y="450">Static SAGE</text>
+    <text x="78" y="525" font-weight="700" fill="#0F766E">Online SAGE</text>
+  </g>
+
+  <!-- Panel A: quality -->
+  <g>
+    <text x="400" y="160" text-anchor="middle" class="t panel-title">(a) Quality ↑</text>
+    <text x="400" y="182" text-anchor="middle" class="t small">range: 0.45–0.70</text>
+    <path d="M300 195V550M400 195V550M500 195V550" class="grid"/>
+    <g class="t tick">
+      <text x="300" y="570" text-anchor="middle">0.45</text>
+      <text x="400" y="570" text-anchor="middle">0.575</text>
+      <text x="500" y="570" text-anchor="middle">0.70</text>
+    </g>
+    <g class="err">
+      <path d="M343 220H349M346 215V225"/><path d="M383 295H391M387 290V300"/><path d="M378 370H386M382 365V375"/><path d="M402 445H412M407 440V450"/><path d="M440 520H450M445 515V525"/>
+    </g>
+    <circle cx="346" cy="220" r="8" class="baseline"/>
+    <circle cx="387" cy="295" r="8" class="baseline"/>
+    <circle cx="382" cy="370" r="8" class="baseline"/>
+    <circle cx="407" cy="445" r="9" class="static"/>
+    <circle cx="445" cy="520" r="11" class="online" stroke="#FFFFFF" stroke-width="3"/>
+    <g class="t label">
+      <text x="359" y="225">.507</text><text x="400" y="300">.558</text><text x="395" y="375">.553</text><text x="421" y="450">.584</text><text x="461" y="525">.631</text>
+    </g>
+  </g>
+
+  <!-- Panel B: common utility -->
+  <g>
+    <text x="700" y="160" text-anchor="middle" class="t panel-title">(b) Common utility ↑</text>
+    <text x="700" y="182" text-anchor="middle" class="t small">range: 0.35–0.52</text>
+    <path d="M600 195V550M700 195V550M800 195V550" class="grid"/>
+    <g class="t tick">
+      <text x="600" y="570" text-anchor="middle">0.35</text>
+      <text x="700" y="570" text-anchor="middle">0.435</text>
+      <text x="800" y="570" text-anchor="middle">0.52</text>
+    </g>
+    <g class="err">
+      <path d="M643 220H649M646 215V225"/><path d="M694 295H706M700 290V300"/><path d="M700 370H712M706 365V375"/><path d="M724 445H740M732 440V450"/><path d="M754 520H768M761 515V525"/>
+    </g>
+    <circle cx="646" cy="220" r="8" class="baseline"/>
+    <circle cx="700" cy="295" r="8" class="baseline"/>
+    <circle cx="706" cy="370" r="8" class="baseline"/>
+    <circle cx="732" cy="445" r="9" class="static"/>
+    <circle cx="761" cy="520" r="11" class="online" stroke="#FFFFFF" stroke-width="3"/>
+    <g class="t label">
+      <text x="659" y="225">.389</text><text x="713" y="300">.435</text><text x="719" y="375">.440</text><text x="746" y="450">.462</text><text x="777" y="525">.487</text>
+    </g>
+  </g>
+
+  <!-- Panel C: deadline miss -->
+  <g>
+    <text x="1000" y="160" text-anchor="middle" class="t panel-title">(c) Deadline miss ↓</text>
+    <text x="1000" y="182" text-anchor="middle" class="t small">range: 0–30%</text>
+    <path d="M900 195V550M1000 195V550M1100 195V550" class="grid"/>
+    <g class="t tick">
+      <text x="900" y="570" text-anchor="middle">0%</text>
+      <text x="1000" y="570" text-anchor="middle">15%</text>
+      <text x="1100" y="570" text-anchor="middle">30%</text>
+    </g>
+    <circle cx="1076" cy="220" r="8" fill="#C2413B"/>
+    <circle cx="979" cy="295" r="8" class="baseline"/>
+    <circle cx="900" cy="370" r="8" class="baseline"/>
+    <circle cx="900" cy="445" r="9" class="static"/>
+    <circle cx="903" cy="520" r="11" class="online" stroke="#FFFFFF" stroke-width="3"/>
+    <g class="t label">
+      <text x="1062" y="225" text-anchor="end">26.4%</text>
+      <text x="992" y="300">11.9%</text>
+      <text x="914" y="375">0.0%</text>
+      <text x="914" y="450">0.0%</text>
+      <text x="919" y="525">0.4%</text>
+    </g>
+  </g>
+
+  <!-- Legend and qualification -->
+  <circle cx="58" cy="617" r="7" class="online"/>
+  <text x="72" y="622" class="t small">Online SAGE</text>
+  <circle cx="188" cy="617" r="7" class="static"/>
+  <text x="202" y="622" class="t small">Static SAGE</text>
+  <circle cx="316" cy="617" r="7" class="baseline"/>
+  <text x="330" y="622" class="t small">Single-agent baselines</text>
+  <line x1="50" y1="646" x2="1150" y2="646" stroke="#CBD5E1"/>
+  <text x="50" y="670" class="t small"><tspan font-weight="700">Scope.</tspan> Synthetic evidence tests routing behavior under a shared simulator; it is not a claim of real-world superiority.</text>
+</svg>

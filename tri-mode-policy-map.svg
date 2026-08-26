@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700" role="img" aria-labelledby="title desc">
+  <title id="title">Conceptual SAGE tri-mode policy map</title>
+  <desc id="desc">A publication-style conceptual phase diagram relating incumbent sufficiency and specialist advantage to self, collaboration, and handoff routing modes.</desc>
+  <defs>
+    <marker id="axis-arrow" markerWidth="9" markerHeight="9" refX="7.5" refY="4.5" orient="auto">
+      <path d="M0 0L9 4.5L0 9Z" fill="#334155"/>
+    </marker>
+    <style>
+      .t{font-family:Arial,Helvetica,sans-serif;fill:#172033}.title{font-size:30px;font-weight:700}.subtitle{font-size:17px;fill:#526071}.body{font-size:17px}.small{font-size:15px;fill:#526071}.mode{font-size:25px;font-weight:700}.axis{stroke:#334155;stroke-width:2;marker-end:url(#axis-arrow)}.grid{stroke:#D8E0EA;stroke-width:1;stroke-dasharray:4 5}.boundary{fill:none;stroke:#FFFFFF;stroke-width:5}.rule{stroke:#D8E0EA;stroke-width:1}
+    </style>
+  </defs>
+
+  <rect width="1200" height="700" fill="#FFFFFF"/>
+  <text x="50" y="52" class="t title">Conceptual tri-mode routing policy</text>
+  <text x="50" y="82" class="t subtitle">Illustrative phase map; calibrated utility and hard feasibility checks determine the operational decision boundary.</text>
+
+  <!-- Phase map -->
+  <g transform="translate(120 145)">
+    <rect width="700" height="410" fill="#F7FAFC" stroke="#CBD5E1" stroke-width="1.5"/>
+    <path d="M0 0H700V410H0Z" fill="#DCE9F9"/>
+    <path d="M0 410V215C135 170 265 183 380 228C500 276 605 260 700 214V410Z" fill="#FCE7A7"/>
+    <path d="M0 410V326C145 278 284 288 414 340C540 390 625 355 700 294V410Z" fill="#CDEBE3"/>
+
+    <path d="M0 215C135 170 265 183 380 228C500 276 605 260 700 214" class="boundary"/>
+    <path d="M0 326C145 278 284 288 414 340C540 390 625 355 700 294" class="boundary"/>
+
+    <path d="M175 0V410M350 0V410M525 0V410M0 102H700M0 205H700M0 307H700" class="grid" opacity=".65"/>
+
+    <text x="518" y="86" text-anchor="middle" class="t mode" fill="#1D4ED8">SELF</text>
+    <text x="518" y="112" text-anchor="middle" class="t body">incumbent capability and retained context are sufficient</text>
+
+    <text x="338" y="270" text-anchor="middle" class="t mode" fill="#92400E">COLLABORATE</text>
+    <text x="338" y="296" text-anchor="middle" class="t body">complementarity exceeds coordination overhead</text>
+
+    <text x="548" y="367" text-anchor="middle" class="t mode" fill="#0F766E">HANDOFF</text>
+    <text x="548" y="393" text-anchor="middle" class="t body">specialist gain exceeds transfer loss</text>
+
+    <path d="M0 430V-14" class="axis"/>
+    <path d="M-18 410H718" class="axis"/>
+    <text x="350" y="455" text-anchor="middle" class="t body" font-weight="700">Specialist advantage and capability gap →</text>
+    <text transform="translate(-72 205) rotate(-90)" text-anchor="middle" class="t body" font-weight="700">Incumbent sufficiency and retained context →</text>
+    <text x="0" y="438" class="t small">low</text>
+    <text x="676" y="438" class="t small">high</text>
+    <text x="-45" y="410" class="t small">low</text>
+    <text x="-49" y="10" class="t small">high</text>
+  </g>
+
+  <!-- Boundary-shift table -->
+  <g transform="translate(860 145)">
+    <rect width="290" height="410" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.5"/>
+    <rect width="290" height="55" fill="#F8FAFC"/>
+    <text x="22" y="35" class="t body" font-weight="700">Boundary-shift factors</text>
+    <text x="22" y="82" class="t small" font-weight="700">Factor</text>
+    <text x="180" y="82" class="t small" font-weight="700">Effect</text>
+    <path d="M18 94H272" class="rule"/>
+
+    <circle cx="32" cy="126" r="6" fill="#2563EB"/>
+    <text x="48" y="131" class="t small">Progress</text>
+    <text x="180" y="122" class="t small">raises switching</text>
+    <text x="180" y="143" class="t small">and transfer cost</text>
+    <path d="M18 164H272" class="rule"/>
+
+    <circle cx="32" cy="196" r="6" fill="#0F766E"/>
+    <text x="48" y="201" class="t small">Transferability</text>
+    <text x="180" y="192" class="t small">makes handoff</text>
+    <text x="180" y="213" class="t small">less costly</text>
+    <path d="M18 234H272" class="rule"/>
+
+    <circle cx="32" cy="266" r="6" fill="#D97706"/>
+    <text x="48" y="271" class="t small">Complementarity</text>
+    <text x="180" y="262" class="t small">increases team</text>
+    <text x="180" y="283" class="t small">coverage value</text>
+    <path d="M18 304H272" class="rule"/>
+
+    <circle cx="32" cy="336" r="6" fill="#334155"/>
+    <text x="48" y="341" class="t small">Constraints</text>
+    <text x="180" y="332" class="t small">prune infeasible</text>
+    <text x="180" y="353" class="t small">modes first</text>
+    <path d="M18 374H272" class="rule"/>
+    <text x="22" y="397" class="t small">Directions are qualitative, not fitted thresholds.</text>
+  </g>
+
+  <line x1="50" y1="635" x2="1150" y2="635" stroke="#CBD5E1"/>
+  <text x="50" y="662" class="t small"><tspan font-weight="700">Interpretation.</tspan> Exact boundaries vary with task value, calibrated success, uncertainty, budget, deadline, permissions, and DAG feasibility.</text>
+</svg>
