@@ -1,4 +1,5 @@
 import json
+import math
 import unittest
 
 from sprix_sage import (
@@ -48,6 +49,12 @@ class SAGERouterTests(unittest.TestCase):
         ]
         with self.assertRaisesRegex(ValueError, "agent IDs must be unique: duplicate"):
             SAGERouter(agents, "duplicate")
+
+    def test_requirement_weight_must_be_finite(self) -> None:
+        for weight in (math.nan, math.inf, -math.inf):
+            with self.subTest(weight=weight):
+                with self.assertRaisesRegex(ValueError, "finite and positive"):
+                    Requirement("planning", weight=weight)
 
     def test_self_for_easy_task_with_expensive_peer(self) -> None:
         agents = [
