@@ -321,6 +321,8 @@ class ExecutionOutcome:
 class SAGERouter:
     """Contextual, progress-aware agent router with bounded team search."""
 
+    STATE_SCHEMA_VERSION = 1
+
     def __init__(
         self,
         agents: Iterable[Agent],
@@ -488,6 +490,161 @@ class SAGERouter:
             fidelity = _clip(1.0 - max(0.0, evidence.actual_latency_ms / decision.latency_ms - 1.0))
             for agent_id in decision.agents:
                 self.latency_fidelity[agent_id].update(fidelity)
+
+    @staticmethod
+    def _belief_payload(belief: BetaBelief) -> dict[str, float]:
+        return {"alpha": belief.alpha, "beta": belief.beta}
+
+    @staticmethod
+    def _belief_from_payload(payload: object, label: str) -> BetaBelief:
+        if not isinstance(payload, Mapping):
+            raise ValueError(f"{label} must be an object")
+        try:
+            alpha = float(payload["alpha"])
+            beta = float(payload["beta"])
+        except (KeyError, TypeError, ValueError) as error:
+            raise ValueError(f"{label} must contain numeric alpha and beta") from error
+        if not math.isfinite(alpha) or not math.isfinite(beta) or alpha <= 0 or beta <= 0:
+            raise ValueError(f"{label} alpha and beta must be finite and positive")
+        return BetaBelief(alpha=alpha, beta=beta)
+
+    def export_state(self) -> dict[str, object]:
+        """Export learned state as a versioned, JSON-serializable snapshot."""
+
+        return {
+            "schema_version": self.STATE_SCHEMA_VERSION,
+            "agent_ids": sorted(self.agents),
+            "reliability": {
+                agent_id: self._belief_payload(belief)
+                for agent_id, belief in sorted(self.reliability.items())
+            },
+            "skill_reliability": [
+                {
+                    "agent_id": agent_id,
+                    "requirement": requirement,
+                    **self._belief_payload(belief),
+                }
+                for (agent_id, requirement), belief in sorted(self.skill_reliability.items())
+            ],
+            "synergy": [
+                {"agents": list(pair), **self._belief_payload(belief)}
+                for pair, belief in sorted(self.synergy.items())
+            ],
+            "cost_fidelity": {
+                agent_id: self._belief_payload(belief)
+                for agent_id, belief in sorted(self.cost_fidelity.items())
+            },
+            "latency_fidelity": {
+                agent_id: self._belief_payload(belief)
+                for agent_id, belief in sorted(self.latency_fidelity.items())
+            },
+            "success_model": {
+                "learning_rate": self.success_model.learning_rate,
+                "l2": self.success_model.l2,
+                "updates": self.success_model.updates,
+                "bias": self.success_model.bias,
+                "weights": dict(sorted(self.success_model.weights.items())),
+            },
+        }
+
+    def restore_state(self, snapshot: Mapping[str, object]) -> None:
+        """Restore a snapshot after validating its schema and agent roster."""
+
+        if snapshot.get("schema_version") != self.STATE_SCHEMA_VERSION:
+            raise ValueError(
+                f"unsupported state schema version: {snapshot.get('schema_version')!r}"
+            )
+        agent_ids = snapshot.get("agent_ids")
+        if not isinstance(agent_ids, list) or set(agent_ids) != set(self.agents):
+            raise ValueError("state agent_ids must exactly match the registered agents")
+
+        def restore_agent_beliefs(name: str) -> dict[str, BetaBelief]:
+            raw = snapshot.get(name)
+            if not isinstance(raw, Mapping) or set(raw) != set(self.agents):
+                raise ValueError(f"state {name} must contain every registered agent")
+            return {
+                agent_id: self._belief_from_payload(raw[agent_id], f"{name}.{agent_id}")
+                for agent_id in self.agents
+            }
+
+        reliability = restore_agent_beliefs("reliability")
+        cost_fidelity = restore_agent_beliefs("cost_fidelity")
+        latency_fidelity = restore_agent_beliefs("latency_fidelity")
+
+        raw_skills = snapshot.get("skill_reliability")
+        if not isinstance(raw_skills, list):
+            raise ValueError("state skill_reliability must be a list")
+        skill_reliability: dict[tuple[str, str], BetaBelief] = {}
+        for index, item in enumerate(raw_skills):
+            if not isinstance(item, Mapping):
+                raise ValueError(f"skill_reliability[{index}] must be an object")
+            agent_id = item.get("agent_id")
+            requirement = item.get("requirement")
+            if agent_id not in self.agents or not isinstance(requirement, str) or not requirement:
+                raise ValueError(f"skill_reliability[{index}] has an invalid key")
+            key = (str(agent_id), requirement)
+            if key in skill_reliability:
+                raise ValueError(f"duplicate skill reliability entry: {key}")
+            skill_reliability[key] = self._belief_from_payload(
+                item, f"skill_reliability[{index}]"
+            )
+
+        raw_synergy = snapshot.get("synergy")
+        if not isinstance(raw_synergy, list):
+            raise ValueError("state synergy must be a list")
+        synergy: dict[tuple[str, str], BetaBelief] = {}
+        for index, item in enumerate(raw_synergy):
+            if not isinstance(item, Mapping):
+                raise ValueError(f"synergy[{index}] must be an object")
+            agents = item.get("agents")
+            if (
+                not isinstance(agents, list)
+                or len(agents) != 2
+                or any(agent_id not in self.agents for agent_id in agents)
+                or agents[0] == agents[1]
+            ):
+                raise ValueError(f"synergy[{index}] must identify two registered agents")
+            pair = tuple(sorted((str(agents[0]), str(agents[1]))))
+            if pair in synergy:
+                raise ValueError(f"duplicate synergy entry: {pair}")
+            synergy[pair] = self._belief_from_payload(item, f"synergy[{index}]")
+
+        raw_model = snapshot.get("success_model")
+        if not isinstance(raw_model, Mapping) or not isinstance(raw_model.get("weights"), Mapping):
+            raise ValueError("state success_model must contain a weights object")
+        try:
+            learning_rate = float(raw_model["learning_rate"])
+            l2 = float(raw_model["l2"])
+            updates = int(raw_model["updates"])
+            bias = float(raw_model["bias"])
+            weights = {
+                str(name): float(value) for name, value in raw_model["weights"].items()
+            }
+        except (KeyError, TypeError, ValueError) as error:
+            raise ValueError("state success_model contains invalid numeric values") from error
+        model_values = [learning_rate, l2, bias, *weights.values()]
+        if (
+            learning_rate <= 0
+            or l2 < 0
+            or updates < 0
+            or not weights
+            or any(not math.isfinite(value) for value in model_values)
+        ):
+            raise ValueError("state success_model values are outside the valid range")
+
+        self.reliability = reliability
+        self.skill_reliability = skill_reliability
+        self.synergy = synergy
+        self.cost_fidelity = cost_fidelity
+        self.latency_fidelity = latency_fidelity
+        self.success_model = OnlineSuccessModel(
+            learning_rate=learning_rate,
+            l2=l2,
+            updates=updates,
+            bias=bias,
+            weights=weights,
+        )
+        self._draw_cache = {}
 
     def _validate_state(self, task: Task, state: ExecutionState) -> None:
         requirement_names = {item.name for item in task.requirements}

@@ -126,6 +126,44 @@ class SAGERouterTests(unittest.TestCase):
             pair = tuple(sorted(decision.agents))
             self.assertGreater(router.synergy[pair].mean, 0.5)
 
+    def test_learned_state_round_trips_through_json(self) -> None:
+        agents = [
+            Agent("current", {"planning": 0.9, "coding": 0.2}, 0.02, 300),
+            Agent("coder", {"planning": 0.2, "coding": 0.9}, 0.02, 350),
+        ]
+        task = Task(
+            "persist",
+            (Requirement("planning", 0.5), Requirement("coding", 0.5)),
+            budget=0.20,
+            deadline_ms=2000,
+            coordination_overhead=0.01,
+        )
+        router = SAGERouter(agents, "current")
+        decision = router.route(task)
+        router.record_outcome(
+            decision,
+            ExecutionOutcome(
+                0.8,
+                requirement_scores={"planning": 0.9, "coding": 0.7},
+                actual_cost=0.05,
+                actual_latency_ms=700,
+            ),
+        )
+        serialized = json.dumps(router.export_state(), sort_keys=True)
+
+        restored = SAGERouter(agents, "current")
+        restored.restore_state(json.loads(serialized))
+
+        self.assertEqual(restored.export_state(), router.export_state())
+        self.assertEqual(restored.route(task).mode, router.route(task).mode)
+
+    def test_state_restore_rejects_a_different_agent_roster(self) -> None:
+        source = SAGERouter([Agent("current", {"code": 0.9}, 0.02, 300)], "current")
+        target = SAGERouter([Agent("other", {"code": 0.9}, 0.02, 300)], "other")
+
+        with self.assertRaisesRegex(ValueError, "agent_ids"):
+            target.restore_state(source.export_state())
+
     def test_requirement_dependencies_must_form_a_dag(self) -> None:
         with self.assertRaises(ValueError):
             Task(
