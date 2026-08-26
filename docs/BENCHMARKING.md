@@ -10,6 +10,10 @@ python benchmark.py
 
 The default suite runs 500 tasks for each of five seeds: `3,7,11,19,23`.
 
+![Synthetic benchmark under a shared external evaluator](assets/fig10-benchmark.svg)
+
+<p align="center"><sub><b>Published synthetic snapshot.</b> Quality and common utility use a shared external evaluator; cost, deadline misses, and route mixture keep the resource trade-off visible.</sub></p>
+
 ## Run a smaller smoke test
 
 ```bash

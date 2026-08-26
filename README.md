@@ -33,9 +33,9 @@ SAGE—**State-Aware Graph Exchange**—is the decision layer between A2A discov
 
 SAGE is designed to sit above the [Agent2Agent (A2A) protocol](https://a2a-protocol.org/latest/). A2A provides Agent Cards, messages, tasks, artifacts, authentication, and transport. SAGE decides **which feasible agent configuration should execute the task, in which mode, and why**.
 
-![SAGE state-aware routing system](docs/assets/sage-routing-system.svg)
+![SAGE routing pipeline and evidence loop](docs/assets/fig01-system-overview.svg)
 
-<p align="center"><sub><b>Figure 1.</b> SAGE constrains the candidate space before comparing SELF, COLLABORATE, and HANDOFF, then updates contextual trust from execution evidence.</sub></p>
+<p align="center"><sub><b>Figure 1.</b> SAGE filters candidates, compares all three routing modes, jointly searches assignments and schedules, ranks feasible plans, and learns from execution evidence.</sub></p>
 
 ## What makes SAGE different?
 
@@ -72,9 +72,9 @@ $$
 
 Here \(z\) is role assignment, \(E\) is the induced communication topology, \(H\) is context-transfer loss, \(O\) is coordination overhead, and \(\mathcal U/\mathcal B\) support uncertainty-aware exploration. The full design and limitations are documented in [ALGORITHM.md](ALGORITHM.md).
 
-![Conceptual SAGE tri-mode policy map](docs/assets/tri-mode-policy-map.svg)
+![Measured SAGE tri-mode decision boundaries](docs/assets/fig04-mode-boundaries.svg)
 
-<p align="center"><sub><b>Figure 2.</b> Conceptual policy map. Exact boundaries are learned and constraint-dependent; the diagram highlights the dominant forces behind route changes.</sub></p>
+<p align="center"><sub><b>Figure 2.</b> Empirical mode sweep over budget and incumbent capability, with per-mode utility crossings and the factors that move the boundary. Exact boundaries depend on configuration and learned state.</sub></p>
 
 ## Quick start
 
@@ -157,9 +157,9 @@ The current prototype intentionally does not transmit tasks, authenticate endpoi
 
 `benchmark.py` runs 2,500 tasks over five deterministic seeds in an external simulator. Hidden capability, pair effects, nonlinear quality, realized cost, and realized latency are deliberately different from SAGE's prediction model. Values are mean ± population standard deviation across seeds:
 
-![Synthetic benchmark comparison for SAGE routing strategies](docs/assets/benchmark-dotplot.svg)
+![Synthetic benchmark under a shared external evaluator](docs/assets/fig10-benchmark.svg)
 
-<p align="center"><sub><b>Figure 3.</b> Paired synthetic comparison under a shared external evaluator. Error bars show population standard deviation across five seeds.</sub></p>
+<p align="center"><sub><b>Figure 3.</b> External quality, shared utility, normalized cost, deadline misses, and the Online SAGE route mixture. Error bars show population standard deviation across five seeds.</sub></p>
 
 | Strategy | Quality | Common utility | Cost / budget | Deadline miss |
 |---|---:|---:|---:|---:|

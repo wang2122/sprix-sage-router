@@ -47,6 +47,10 @@ $$
 
 This prevents success in one domain from fully transferring to unrelated domains. Cold-start agents remain selectable. With exploration enabled, one coherent Thompson sample is drawn per belief and reused across every candidate compared in the same routing event.
 
+![Contextual trust calibration and evidence-aware updates](docs/assets/fig09-contextual-trust.svg)
+
+<p align="center"><sub><b>Contextual calibration and learning.</b> Declared skill and bid confidence are gated by global and requirement-conditioned evidence; updates follow the strongest available credit signal.</sub></p>
+
 ## 5. Team coverage, assignment, and topology
 
 For each remaining requirement, team coverage is:
@@ -117,6 +121,10 @@ COLLABORATE teams are then constructed using the outer bounded beam search:
 The nested search preserves multiple competing team and ownership prefixes instead of committing to one greedy team or one greedy role map. It is still a bounded approximation: partial-assignment ranking is heuristic, and SAGE does not claim a global optimum for the non-submodular, resource-constrained full objective.
 
 For \(n\) eligible peers, team beam width \(B_t\), assignment beam width \(B_a\), collaborator limit \(k\), and \(|R|\) requirements, the current reference implementation is approximately \(O(B_tknB_a k|R|^2)\), excluding candidate retrieval. The extra \(|R|\) factor comes from rescoring bounded assignment prefixes for clarity in the dependency-free implementation.
+
+![Bounded outer beam search over collaboration teams](docs/assets/fig08-beam-search.svg)
+
+<p align="center"><sub><b>Bounded team search.</b> The figure isolates the outer team beam; the current router runs the bounded role-assignment search described above inside each scored team.</sub></p>
 
 ## 9. Evidence-aware online updates
 

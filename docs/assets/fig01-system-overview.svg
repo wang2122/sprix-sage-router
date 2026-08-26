@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="522" viewBox="0 0 1120 522" role="img" aria-labelledby="t d" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif">
+  <title id="t">SAGE routing pipeline and evidence loop</title>
+  <desc id="d">Four-stage routing pipeline: hard feasibility gate, tri-mode candidate generation, requirement assignment with DAG scheduling, and constrained utility ranking, followed by an execution plan and an evidence-driven posterior update loop.</desc>
+  <defs><marker id="ar16191D" markerWidth="7" markerHeight="7" refX="6.2" refY="3" orient="auto"><path d="M0 0L7 3L0 6Z" fill="#16191D"/></marker><marker id="ar6B7280" markerWidth="7" markerHeight="7" refX="6.2" refY="3" orient="auto"><path d="M0 0L7 3L0 6Z" fill="#6B7280"/></marker><marker id="ar9CA3AF" markerWidth="7" markerHeight="7" refX="6.2" refY="3" orient="auto"><path d="M0 0L7 3L0 6Z" fill="#9CA3AF"/></marker><marker id="ar9AA0A6" markerWidth="7" markerHeight="7" refX="6.2" refY="3" orient="auto"><path d="M0 0L7 3L0 6Z" fill="#9AA0A6"/></marker><marker id="ar1F5FA8" markerWidth="7" markerHeight="7" refX="6.2" refY="3" orient="auto"><path d="M0 0L7 3L0 6Z" fill="#1F5FA8"/></marker><marker id="arE07C24" markerWidth="7" markerHeight="7" refX="6.2" refY="3" orient="auto"><path d="M0 0L7 3L0 6Z" fill="#E07C24"/></marker><marker id="ar217A38" markerWidth="7" markerHeight="7" refX="6.2" refY="3" orient="auto"><path d="M0 0L7 3L0 6Z" fill="#217A38"/></marker><marker id="ar7B4FA0" markerWidth="7" markerHeight="7" refX="6.2" refY="3" orient="auto"><path d="M0 0L7 3L0 6Z" fill="#7B4FA0"/></marker><marker id="arB02418" markerWidth="7" markerHeight="7" refX="6.2" refY="3" orient="auto"><path d="M0 0L7 3L0 6Z" fill="#B02418"/></marker><marker id="ar9A3B2F" markerWidth="7" markerHeight="7" refX="6.2" refY="3" orient="auto"><path d="M0 0L7 3L0 6Z" fill="#9A3B2F"/></marker></defs>
+  <rect width="1120" height="522" fill="#FFFFFF"/>
+  <rect x="40" y="26" width="1040" height="58" fill="#FCFCFD" stroke="#4A4A55" stroke-width="0.9" stroke-dasharray="4 3"/>
+  <text x="54" y="46" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="10" fill="#16191D" font-weight="700" letter-spacing="1.1">A2A PROTOCOL LAYER</text>
+  <text x="54" y="68" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="11.5" fill="#16191D">Agent Cards  ·  security schemes  ·  message/send  ·  task status  ·  artifacts  ·  streaming and cancellation</text>
+  <text x="1066" y="46" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="10.5" fill="#6B7280" text-anchor="end">outside the router</text>
+  <path d="M170 84V112" fill="none" stroke="#6B7280" stroke-width="1" marker-end="url(#ar6B7280)"/>
+  <text x="178" y="104" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="10.5" fill="#16191D">declarations + live task state</text>
+  <rect x="40" y="118" width="235" height="184" fill="#FFFFFF" stroke="#4A4A55" stroke-width="0.9"/>
+  <rect x="40" y="118" width="235" height="30" fill="#EDEDF3"/>
+  <line x1="40" y1="148" x2="275" y2="148" stroke="#4A4A55" stroke-width="0.9"/>
+  <text x="52" y="138" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="12" fill="#16191D" font-weight="700">1</text>
+  <text x="70" y="138" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="12" fill="#16191D" font-weight="700">Feasibility gate</text>
+  <circle cx="56" cy="166" r="1.8" fill="#6B7280"/>
+  <text x="64" y="170" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="11" fill="#16191D">availability and prior failures</text>
+  <circle cx="56" cy="185" r="1.8" fill="#6B7280"/>
+  <text x="64" y="189" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="11" fill="#16191D">permissions cover the task</text>
+  <circle cx="56" cy="204" r="1.8" fill="#6B7280"/>
+  <text x="64" y="208" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="11" fill="#16191D">risk-adjusted cost ≤ budget</text>
+  <circle cx="56" cy="223" r="1.8" fill="#6B7280"/>
+  <text x="64" y="227" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="11" fill="#16191D">risk-adjusted latency ≤ deadline</text>
+  <text x="53" y="246" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="11" fill="#16191D"></text>
+  <text x="53" y="265" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="11" fill="#16191D">quotes inflated by bid fidelity and load</text>
+  <line x1="40" y1="272" x2="275" y2="272" stroke="#D2D6DC" stroke-width="1"/>
+  <text x="53" y="290" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="10.5" fill="#16191D">n candidates → n′ eligible</text>
+  <rect x="305" y="118" width="235" height="184" fill="#FFFFFF" stroke="#4A4A55" stroke-width="0.9"/>
+  <rect x="305" y="118" width="235" height="30" fill="#EDEDF3"/>
+  <line x1="305" y1="148" x2="540" y2="148" stroke="#4A4A55" stroke-width="0.9"/>
+  <text x="317" y="138" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="12" fill="#16191D" font-weight="700">2</text>
+  <text x="335" y="138" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="12" fill="#16191D" font-weight="700">Candidate generation</text>
+  <text x="318" y="170" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="11.5" fill="#16191D" font-style="italic"><tspan font-size="11.5" dy="-0.00">SELF:  S = {a</tspan><tspan font-size="8.0" dy="2.99" dx="0.58">0</tspan><tspan font-size="11.5" dy="-2.99" dx="0.92">}</tspan></text>
+  <text x="318" y="189" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="11.5" fill="#16191D" font-style="italic"><tspan font-size="11.5" dy="-0.00">HANDOFF:  S = {a},  a ≠ a</tspan><tspan font-size="8.0" dy="2.99" dx="0.58">0</tspan></text>
+  <text x="318" y="208" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="11.5" fill="#16191D" font-style="italic"><tspan font-size="11.5" dy="-0.00">COLLAB:  beam width B, ≤ k peers</tspan></text>
+  <text x="318" y="227" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="11" fill="#16191D"></text>
+  <text x="318" y="246" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="11" fill="#16191D">every mode competes inside one</text>
+  <text x="318" y="265" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="11" fill="#16191D">objective, not separate heuristics</text>
+  <line x1="305" y1="272" x2="540" y2="272" stroke="#D2D6DC" stroke-width="1"/>
+  <text x="318" y="290" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="10.5" fill="#16191D">only budget-feasible prefixes expand</text>
+  <rect x="570" y="118" width="235" height="184" fill="#FFFFFF" stroke="#4A4A55" stroke-width="0.9"/>
+  <rect x="570" y="118" width="235" height="30" fill="#EDEDF3"/>
+  <line x1="570" y1="148" x2="805" y2="148" stroke="#4A4A55" stroke-width="0.9"/>
+  <text x="582" y="138" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="12" fill="#16191D" font-weight="700">3</text>
+  <text x="600" y="138" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="12" fill="#16191D" font-weight="700">Joint assignment and schedule</text>
+  <text x="583" y="170" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="11.5" fill="#16191D" font-style="italic"><tspan font-size="11.5" dy="-0.00">q</tspan><tspan font-size="8.0" dy="2.99" dx="0.58">a,r</tspan><tspan font-size="11.5" dy="-2.99" dx="0.92"> = s</tspan><tspan font-size="8.0" dy="2.99" dx="0.58">a,r</tspan><tspan font-size="11.5" dy="-2.99" dx="0.92"> g(t</tspan><tspan font-size="8.0" dy="2.99" dx="0.58">a,r</tspan><tspan font-size="11.5" dy="-2.99" dx="0.92">) h(b̃</tspan><tspan font-size="8.0" dy="2.99" dx="0.58">a,r</tspan><tspan font-size="11.5" dy="-2.99" dx="0.92">)</tspan></text>
+  <text x="583" y="189" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="11.5" fill="#16191D" font-style="italic"><tspan font-size="11.5" dy="-0.00">C</tspan><tspan font-size="8.0" dy="2.99" dx="0.58">r</tspan><tspan font-size="11.5" dy="-2.99" dx="0.92">(S) = 1 − ∏</tspan><tspan font-size="8.0" dy="2.99" dx="0.58">a∈S</tspan><tspan font-size="11.5" dy="-2.99" dx="0.92">(1 − q</tspan><tspan font-size="8.0" dy="2.99" dx="0.58">a,r</tspan><tspan font-size="11.5" dy="-2.99" dx="0.92">)</tspan></text>
+  <text x="583" y="208" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="11.5" fill="#16191D" font-style="italic">z ∈ BeamAssign(S, G, B_a)</text>
+  <text x="583" y="227" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="11.5" fill="#16191D" font-style="italic"><tspan font-size="11.5" dy="-0.00">critical path → latency,  cuts → E</tspan></text>
+  <text x="583" y="246" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="11" fill="#16191D"></text>
+  <text x="583" y="265" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="11" fill="#16191D">concurrent across agents, serial</text>
+  <line x1="570" y1="272" x2="805" y2="272" stroke="#D2D6DC" stroke-width="1"/>
+  <text x="583" y="290" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="10.5" fill="#16191D">team-level budget and deadline re-check</text>
+  <rect x="835" y="118" width="235" height="184" fill="#FFFFFF" stroke="#4A4A55" stroke-width="0.9"/>
+  <rect x="835" y="118" width="235" height="30" fill="#EDEDF3"/>
+  <line x1="835" y1="148" x2="1070" y2="148" stroke="#4A4A55" stroke-width="0.9"/>
+  <text x="847" y="138" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="12" fill="#16191D" font-weight="700">4</text>
+  <text x="865" y="138" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="12" fill="#16191D" font-weight="700">Constrained ranking</text>
+  <text x="848" y="170" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="11.5" fill="#16191D" font-style="italic"><tspan font-size="11.5" dy="-0.00">p̂ = σ(w</tspan><tspan font-size="8.0" dy="-4.37" dx="0.58">T</tspan><tspan font-size="11.5" dy="4.37" dx="0.92">φ(x, m, S, z, E))</tspan></text>
+  <text x="848" y="189" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="11.5" fill="#16191D" font-style="italic"><tspan font-size="11.5" dy="-0.00">U = V p̂ − λ</tspan><tspan font-size="8.0" dy="2.99" dx="0.58">c</tspan><tspan font-size="11.5" dy="-2.99" dx="0.92"> C̄ − λ</tspan><tspan font-size="8.0" dy="2.99" dx="0.58">l</tspan><tspan font-size="11.5" dy="-2.99" dx="0.92"> L̄ − λ</tspan><tspan font-size="8.0" dy="2.99" dx="0.58">r</tspan><tspan font-size="11.5" dy="-2.99" dx="0.92"> R</tspan></text>
+  <text x="848" y="208" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="11.5" fill="#16191D" font-style="italic"><tspan font-size="11.5" dy="-0.00">        − λ</tspan><tspan font-size="8.0" dy="2.99" dx="0.58">h</tspan><tspan font-size="11.5" dy="-2.99" dx="0.92"> H − λ</tspan><tspan font-size="8.0" dy="2.99" dx="0.58">o</tspan><tspan font-size="11.5" dy="-2.99" dx="0.92"> O − λ</tspan><tspan font-size="8.0" dy="2.99" dx="0.58">u</tspan><tspan font-size="11.5" dy="-2.99" dx="0.92"> u + β b</tspan></text>
+  <text x="848" y="227" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="11" fill="#16191D"></text>
+  <text x="848" y="246" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="11" fill="#16191D">argmax over feasible routes; a high</text>
+  <text x="848" y="265" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="11" fill="#16191D">score never reopens a hard filter</text>
+  <line x1="835" y1="272" x2="1070" y2="272" stroke="#D2D6DC" stroke-width="1"/>
+  <text x="848" y="290" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="10.5" fill="#16191D">ranked alternatives retained for audit</text>
+  <path d="M278 210.0H301" fill="none" stroke="#16191D" stroke-width="1.1" marker-end="url(#ar16191D)"/>
+  <path d="M543 210.0H566" fill="none" stroke="#16191D" stroke-width="1.1" marker-end="url(#ar16191D)"/>
+  <path d="M808 210.0H831" fill="none" stroke="#16191D" stroke-width="1.1" marker-end="url(#ar16191D)"/>
+  <rect x="575" y="356" width="505" height="96" fill="#FFFFFF" stroke="#4A4A55" stroke-width="0.9"/>
+  <text x="588" y="376" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="12" fill="#16191D" font-weight="700">Transport-neutral execution plan</text>
+  <text x="588" y="397" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="11" fill="#16191D">ownership  ·  assignment z  ·  topology E  ·  estimated cost and latency</text>
+  <text x="588" y="416" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="11" fill="#16191D">rationale  ·  ranked feasible alternatives  ·  explicit exclusion reasons</text>
+  <text x="588" y="440" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="10.5" fill="#16191D">handed to the A2A client for transport and execution</text>
+  <rect x="40" y="356" width="505" height="96" fill="#FFFFFF" stroke="#4A4A55" stroke-width="0.9"/>
+  <text x="53" y="376" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="12" fill="#16191D" font-weight="700">Execution evidence → posterior update</text>
+  <text x="53" y="398" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="10.5" fill="#16191D">requirement</text>
+  <text x="53" y="420" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="11.5" fill="#16191D" font-style="italic"><tspan font-size="11.5" dy="-0.00">θ</tspan><tspan font-size="8.0" dy="2.99" dx="0.58">a,r</tspan></text>
+  <text x="152" y="398" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="10.5" fill="#16191D">agent</text>
+  <text x="152" y="420" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="11.5" fill="#16191D" font-style="italic"><tspan font-size="11.5" dy="-0.00">θ</tspan><tspan font-size="8.0" dy="2.99" dx="0.58">a</tspan></text>
+  <text x="251" y="398" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="10.5" fill="#16191D">residual</text>
+  <text x="251" y="420" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="11.5" fill="#16191D" font-style="italic"><tspan font-size="11.5" dy="-0.00">synergy</tspan></text>
+  <text x="350" y="398" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="10.5" fill="#16191D">quote</text>
+  <text x="350" y="420" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="11.5" fill="#16191D" font-style="italic"><tspan font-size="11.5" dy="-0.00">fidelity</tspan></text>
+  <text x="449" y="398" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="10.5" fill="#16191D">outcome</text>
+  <text x="449" y="420" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="11.5" fill="#16191D" font-style="italic"><tspan font-size="11.5" dy="-0.00">w</tspan></text>
+  <text x="53" y="440" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="10.5" fill="#16191D">strongest available evidence wins; a team-only outcome stays low-weight</text>
+  <path d="M571 400H549" fill="none" stroke="#6B7280" stroke-width="1" marker-end="url(#ar6B7280)"/>
+  <path d="M1000 306V352" fill="none" stroke="#16191D" stroke-width="1.1" marker-end="url(#ar16191D)"/>
+  <path d="M157 352V330H900" fill="none" stroke="#1F5FA8" stroke-width="1" stroke-dasharray="5 4"/>
+  <path d="M157 330V307" fill="none" stroke="#1F5FA8" stroke-width="1" stroke-dasharray="5 4" marker-end="url(#ar1F5FA8)"/>
+  <path d="M692 330V307" fill="none" stroke="#1F5FA8" stroke-width="1" stroke-dasharray="5 4" marker-end="url(#ar1F5FA8)"/>
+  <path d="M900 330V307" fill="none" stroke="#1F5FA8" stroke-width="1" stroke-dasharray="5 4" marker-end="url(#ar1F5FA8)"/>
+  <text x="320" y="324" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="10" fill="#1F5FA8">learning path</text>
+  <line x1="40" y1="486" x2="1080" y2="486" stroke="#D2D6DC" stroke-width="1"/><text x="40" y="500" font-family="'Linux Libertine O','Linux Libertine','Libertinus Serif','Times New Roman',Times,Georgia,serif" font-size="11" fill="#6B7280">SAGE does not transmit tasks, authenticate endpoints, or verify signatures. Discovery, transport, credentials, and artifact handling remain with the registry and the A2A client.</text>
+</svg>
