@@ -293,7 +293,15 @@ class SAGERouter:
         exploration: bool = False,
         seed: int = 7,
     ) -> None:
-        self.agents = {agent.agent_id: agent for agent in agents}
+        self.agents: dict[str, Agent] = {}
+        duplicate_ids: set[str] = set()
+        for agent in agents:
+            if agent.agent_id in self.agents:
+                duplicate_ids.add(agent.agent_id)
+            self.agents[agent.agent_id] = agent
+        if duplicate_ids:
+            names = ", ".join(sorted(duplicate_ids))
+            raise ValueError(f"agent IDs must be unique: {names}")
         if incumbent_id not in self.agents:
             raise ValueError("incumbent_id must identify a registered agent")
         if max_collaborators < 0 or beam_width <= 0:
@@ -562,6 +570,7 @@ class SAGERouter:
 
     def _schedule(
         self,
+        team: tuple[str, ...],
         assignments: Mapping[str, str],
         task: Task,
         bids: Mapping[str, Bid],
@@ -585,11 +594,37 @@ class SAGERouter:
                 if dependency_agent and dependency_agent != agent_id:
                     topology.add((dependency_agent, agent_id))
 
-        used_agents = set(assignments.values())
+        used_agents = set(team)
         coordinator = self.incumbent_id if self.incumbent_id in used_agents else min(used_agents)
-        connected = {node for edge in topology for node in edge}
-        for agent_id in sorted(used_agents - {coordinator} - connected):
-            topology.add((coordinator, agent_id))
+
+        adjacency = {agent_id: set() for agent_id in used_agents}
+        for left, right in topology:
+            adjacency[left].add(right)
+            adjacency[right].add(left)
+
+        def component(start: str) -> set[str]:
+            found: set[str] = set()
+            pending = [start]
+            while pending:
+                agent_id = pending.pop()
+                if agent_id in found:
+                    continue
+                found.add(agent_id)
+                pending.extend(adjacency[agent_id] - found)
+            return found
+
+        disconnected = used_agents - component(coordinator)
+        while disconnected:
+            peer_component = component(min(disconnected))
+            destinations = {
+                right
+                for left, right in topology
+                if left in peer_component and right in peer_component
+            }
+            roots = peer_component - destinations
+            representative = min(roots or peer_component)
+            topology.add((coordinator, representative))
+            disconnected -= peer_component
 
         latency = max(finish.values(), default=0.0)
         cross_agent_edges = len(topology)
@@ -630,7 +665,7 @@ class SAGERouter:
             team, task, bids, state
         )
         synergy, redundancy = self._team_terms(team, requirements)
-        latency, topology = self._schedule(assignments, task, bids, state)
+        latency, topology = self._schedule(team, assignments, task, bids, state)
         cost = sum(self._risk_adjusted_cost(agent_id, bids[agent_id]) for agent_id in team)
         coordination_loss = task.coordination_overhead * len(topology) if mode is Mode.COLLABORATE else 0.0
         switch_loss = self._switch_loss(mode, team, task, state)

@@ -55,7 +55,7 @@ $$
 
 The requirement is assigned to the team member with the highest calibrated capability. Weighted coverage and the lowest threshold-satisfaction ratio form separate model features, so one missing critical capability cannot be hidden by a high mean.
 
-Requirement dependencies induce communication edges whenever two dependent nodes are assigned to different agents. Independent requirements on different agents can run concurrently; requirements assigned to the same agent are serialized. The resulting resource-constrained DAG schedule estimates critical-path latency before the route is accepted.
+Requirement dependencies induce communication edges whenever two dependent nodes are assigned to different agents. Any remaining disconnected executor component is linked to the route coordinator through a component root, so the reported topology covers the entire selected team and coordination overhead is not understated. Independent requirements on different agents can run concurrently; requirements assigned to the same agent are serialized. The resulting resource-constrained DAG schedule estimates critical-path latency before the route is accepted.
 
 Pairwise Beta posteriors model observed collaboration residuals, while skill-vector similarity measures possible redundancy. These are features rather than claims that the complete utility is submodular.
 

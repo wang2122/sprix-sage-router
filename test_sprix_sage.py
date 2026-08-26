@@ -12,6 +12,14 @@ from sprix_sage import (
 
 
 class SAGERouterTests(unittest.TestCase):
+    def test_duplicate_agent_ids_are_rejected(self) -> None:
+        agents = [
+            Agent("duplicate", {"planning": 0.95}, 0.02, 300),
+            Agent("duplicate", {"coding": 0.95}, 0.03, 350),
+        ]
+        with self.assertRaisesRegex(ValueError, "agent IDs must be unique: duplicate"):
+            SAGERouter(agents, "duplicate")
+
     def test_self_for_easy_task_with_expensive_peer(self) -> None:
         agents = [
             Agent("current", {"writing": 0.94}, 0.02, 300),
@@ -119,6 +127,32 @@ class SAGERouterTests(unittest.TestCase):
         self.assertEqual(decision.mode, Mode.COLLABORATE)
         self.assertEqual(decision.assignments, {"plan": "planner", "build": "builder"})
         self.assertIn(("planner", "builder"), decision.topology)
+
+    def test_collaboration_topology_connects_incumbent_to_peer_component(self) -> None:
+        agents = [
+            Agent("owner", {"oversight": 1.0}, 0.0, 100),
+            Agent("planner", {"plan": 1.0}, 0.0, 100),
+            Agent("builder", {"build": 1.0}, 0.0, 100),
+        ]
+        task = Task(
+            "connected-topology",
+            (
+                Requirement("oversight", 1.0, 0.95),
+                Requirement("plan", 1.0, 0.95),
+                Requirement("build", 1.0, 0.95, depends_on=("plan",)),
+            ),
+            value=10.0,
+            budget=1.0,
+            deadline_ms=5000,
+            coordination_overhead=0.01,
+        )
+
+        decision = SAGERouter(agents, "owner", max_collaborators=2).route(task)
+
+        self.assertEqual(decision.mode, Mode.COLLABORATE)
+        self.assertEqual(set(decision.agents), {"owner", "planner", "builder"})
+        self.assertIn(("planner", "builder"), decision.topology)
+        self.assertIn(("owner", "planner"), decision.topology)
 
     def test_team_level_deadline_is_enforced_after_dag_scheduling(self) -> None:
         agents = [

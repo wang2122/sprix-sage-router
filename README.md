@@ -156,8 +156,8 @@ The current prototype returns a routing decision; it intentionally does not tran
 | Incumbent only | 0.507 ± 0.003 | 0.389 ± 0.002 | 0.239 ± 0.005 | 26.4% |
 | Advertised-skill solo | 0.558 ± 0.005 | 0.435 ± 0.005 | 0.292 ± 0.004 | 11.9% |
 | Feasible solo oracle | 0.553 ± 0.005 | 0.440 ± 0.005 | 0.271 ± 0.005 | 0.0% |
-| Static SAGE | 0.591 ± 0.007 | 0.467 ± 0.007 | 0.329 ± 0.007 | 0.0% |
-| **Online SAGE** | **0.634 ± 0.006** | **0.487 ± 0.006** | 0.434 ± 0.011 | 0.2% |
+| Static SAGE | 0.584 ± 0.007 | 0.462 ± 0.007 | 0.315 ± 0.005 | 0.0% |
+| **Online SAGE** | **0.631 ± 0.006** | **0.487 ± 0.006** | 0.422 ± 0.008 | 0.4% |
 
 All strategies are evaluated with the same external quality-cost-latency utility. Online SAGE spends more than static SAGE to obtain higher simulated quality; that trade-off remains visible instead of being hidden behind a capability-only score.
 
