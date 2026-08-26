@@ -27,6 +27,8 @@ An agent is removed before ranking when it is unavailable, failed, unauthorized,
 
 After a team has been formed, SAGE performs a second feasibility check using total team cost and DAG critical-path latency. A high learned score can never override these constraints.
 
+`route_with_trace` retains the explicit exclusion reasons and every feasible evaluated alternative. This creates an audit record without changing the optimization objective or allowing an excluded agent back into the candidate set.
+
 ## 4. Contextual capability calibration
 
 SAGE maintains both a global reliability posterior \(\theta_a\) and a requirement-conditioned posterior \(\theta_{a,r}\). For advertised capability \(s_{a,r}\) and bid confidence \(b_a\):
@@ -122,6 +124,8 @@ Updates follow the strongest available evidence:
 
 This is safer than assigning the same binary outcome to every member, but it is not yet causal credit assignment. Logged propensities, randomized exploration, and doubly robust off-policy evaluation are still needed for production learning.
 
+The reference implementation can export these learned beliefs and model parameters as a versioned JSON snapshot. Restore requires an exact agent roster, which prevents evidence from silently attaching to a different marketplace population. Snapshot persistence does not make concurrent updates transactional and does not preserve the exploration random-generator state.
+
 ## 10. External benchmark
 
 `benchmark.py` uses an external nonlinear simulator whose hidden capabilities, pair effects, quality function, realized cost, and realized latency differ from SAGE's prediction model. Its default suite covers five seeds and 2,500 tasks. It compares:
@@ -135,3 +139,11 @@ This is safer than assigning the same binary outcome to every member, but it is 
 The simulator measures external quality, a common quality-cost-latency utility, normalized resource use, deadline violations, and route distribution. It removes the previous circular evaluation in which SAGE's own noisy-OR probability generated its success labels.
 
 The benchmark is still synthetic. Publishable evidence requires real task traces, heterogeneous A2A endpoints, strong learned baselines, calibration and regret analysis, safety tests, and repeated-seed confidence intervals.
+
+The command-line runner accepts explicit seeds and task counts and can emit a JSON summary containing population statistics, route mix, and model-update counts. This improves reproducibility but does not change the evidentiary status of the simulator.
+
+## 11. Integration and operational boundary
+
+`sprix_a2a.py` separates Agent Card declarations from local numeric evidence. A card skill becomes routable only when the caller supplies a calibrated score for the declared skill ID, plus cost, latency, permissions, availability, and load. The adapter then converts a selected route into a transport-neutral execution plan.
+
+The adapter does not verify identity or signatures, authenticate endpoints, transmit messages, manage credentials, evaluate artifacts, or enforce execution isolation. Those controls remain the responsibility of the registry, A2A client, executor, and policy layer described in [docs/INTEGRATION.md](docs/INTEGRATION.md) and [docs/OPERATIONS.md](docs/OPERATIONS.md).

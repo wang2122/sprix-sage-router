@@ -13,7 +13,7 @@
 
 Choose whether an agent should **continue alone**, **recruit complementary collaborators**, or **hand off the task**—then assign task-DAG roles, schedule dependencies, and learn from execution evidence under permission, budget, and deadline constraints.
 
-[Quick start](#quick-start) · [Algorithm](ALGORITHM.md) · [Benchmark](#benchmark) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md)
+[Quick start](#quick-start) · [Algorithm](ALGORITHM.md) · [A2A integration](docs/INTEGRATION.md) · [Operations](docs/OPERATIONS.md) · [Benchmark](#benchmark) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md)
 
 </div>
 
@@ -49,7 +49,9 @@ SAGE is designed to sit above the [Agent2Agent (A2A) protocol](https://a2a-proto
 - **Bid fidelity.** Quoted confidence, cost, and latency are calibrated against observed execution evidence.
 - **Permission-first matching.** Ineligible agents never enter the ranking, regardless of predicted quality.
 - **Evidence-aware credit.** Per-requirement and per-agent outcomes avoid giving every teammate identical full credit.
-- **Auditable output.** Every decision includes assignments, topology, success, coverage, cost, latency, risk, utility, and a human-readable rationale.
+- **Auditable alternatives.** `route_with_trace` records the winner, ranked feasible alternatives, eligible agents, and explicit hard-filter reasons.
+- **Persistent learning.** Versioned JSON snapshots preserve contextual trust, synergy, bid fidelity, and online-model state across restarts.
+- **Transport-neutral A2A plans.** Agent Card helpers combine declarations with local evidence and produce execution plans without hiding transport responsibilities.
 
 ## Core algorithm
 
@@ -113,8 +115,10 @@ task = Task(
 )
 
 router = SAGERouter(agents, incumbent_id="planner")
-decision = router.route(task)
+trace = router.route_with_trace(task)
+decision = trace.selected
 print(decision.mode, decision.assignments, decision.topology)
+print(trace.excluded_agents)
 
 # Feed back the strongest available evidence after execution.
 router.record_outcome(
@@ -126,6 +130,9 @@ router.record_outcome(
         actual_latency_ms=1450,
     ),
 )
+
+# Persist learned evidence after validated outcomes.
+snapshot = router.export_state()
 ```
 
 ## A2A integration
@@ -141,7 +148,9 @@ Production integration maps protocol and marketplace signals into SAGE as follow
 | Provider quote | `Bid(cost, latency, confidence)` |
 | Completed task evaluation | Contextual trust, pair residual, success model, and bid-fidelity updates |
 
-The current prototype returns a routing decision; it intentionally does not transmit tasks. An A2A client can execute the selected route through `message/send`, streaming, task polling, or cancellation.
+`sprix_a2a.py` validates declared skill IDs against locally calibrated evidence and converts the selected route into a transport-neutral `ExecutionPlan`. The plan includes ownership, assignments, DAG dependencies, communication edges, estimated resources, and rationale.
+
+The current prototype intentionally does not transmit tasks, authenticate endpoints, or verify signatures. An A2A client remains responsible for `message/send`, streaming, polling, cancellation, and secure artifact handling. See the [integration guide](docs/INTEGRATION.md) and runnable [`examples`](examples/README.md).
 
 ## Benchmark
 
@@ -161,6 +170,8 @@ The current prototype returns a routing decision; it intentionally does not tran
 
 All strategies are evaluated with the same external quality-cost-latency utility. Online SAGE spends more than static SAGE to obtain higher simulated quality; that trade-off remains visible instead of being hidden behind a capability-only score.
 
+Use `python benchmark.py --json benchmark-results.json` for a versioned machine-readable summary, or change seeds and suite size with `--seeds` and `--tasks-per-seed`. See the [benchmarking guide](docs/BENCHMARKING.md).
+
 > [!IMPORTANT]
 > These synthetic numbers test learning and constraints without using SAGE's own score as ground truth. They are still **not** evidence of real-world superiority. A publishable evaluation requires confidence intervals over real executions, strong learned-routing baselines, heterogeneous agent benchmarks, marketplace trace replay, calibration analysis, and adversarial conditions.
 
@@ -168,11 +179,14 @@ All strategies are evaluated with the same external quality-cost-latency utility
 
 | Path | Purpose |
 |---|---|
-| `sprix_sage.py` | Contextual router, DAG scheduler, beam search, and online updates |
+| `sprix_sage.py` | Contextual router, DAG scheduler, beam search, audit traces, and persistent online state |
+| `sprix_a2a.py` | Safe Agent Card normalization and transport-neutral execution plans |
 | `ALGORITHM.md` | Formal objective, search, credit assignment, and limitations |
 | `demo.py` | Readable end-to-end routing example |
-| `benchmark.py` | External nonlinear simulator and common-utility baselines |
-| `test_sprix_sage.py` | Behavioral unit tests |
+| `examples/` | A2A planning, failure recovery, and persistence examples |
+| `docs/` | Integration, operations, benchmarking, and research figures |
+| `benchmark.py` | Configurable external simulator with console and JSON reports |
+| `test_*.py` | Router, adapter, persistence, and benchmark tests |
 | `.github/workflows/tests.yml` | Multi-version continuous integration |
 
 ## Roadmap
@@ -181,6 +195,10 @@ All strategies are evaluated with the same external quality-cost-latency utility
 - [x] Requirement-conditioned trust and online success prediction
 - [x] Requirement DAG assignment and team-level deadline checks
 - [x] Evidence-aware partial credit and quote-fidelity learning
+- [x] Auditable alternatives and hard-filter explanations
+- [x] Versioned JSON learning-state snapshots
+- [x] Transport-neutral Agent Card mapping and execution plans
+- [x] Machine-readable deterministic benchmark reports
 - [ ] Learned task-text embeddings and candidate retrieval
 - [ ] Real A2A adapters for discovery, execution, streaming, and cancellation
 - [ ] Offline replay on anonymized Sprix marketplace traces
@@ -198,7 +216,7 @@ All strategies are evaluated with the same external quality-cost-latency utility
 
 ## Project status
 
-SAGE is an **early-stage research preview**, not a production SLA or a peer-reviewed result. Version 0.2 adds a genuinely learned but deliberately lightweight policy layer; it is not a substitute for real trace training or causal off-policy evaluation. Production deployment requires calibrated evaluators, authenticated identities, signed capability metadata, privacy and security review, persistent event-driven recovery, monitoring, and task-specific validation.
+SAGE is an **early-stage research preview**, not a production SLA or a peer-reviewed result. Version 0.2 adds a genuinely learned but deliberately lightweight policy layer, auditable routing traces, versioned learning snapshots, and a transport-neutral integration boundary. These are not substitutes for real trace training or causal off-policy evaluation. Production deployment requires calibrated evaluators, authenticated identities, signed capability metadata, privacy and security review, persistent event-driven recovery, monitoring, and task-specific validation. See the [operations guide](docs/OPERATIONS.md) for rollout gates and metrics.
 
 ## About Sprix AI
 

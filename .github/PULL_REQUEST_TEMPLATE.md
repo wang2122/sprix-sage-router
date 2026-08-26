@@ -1,15 +1,21 @@
-## Summary
+## Problem
 
-Describe the problem and the proposed change.
+What user, research, or operational problem does this change solve?
 
-## Algorithm or API impact
+## Changes
 
-Explain any change to routing behavior, constraints, calibration, online updates, or public interfaces.
+- Describe the focused implementation changes.
 
-## Verification
+## Validation
 
-- [ ] `python -m py_compile sprix_sage.py demo.py benchmark.py test_sprix_sage.py`
+- [ ] `python -m compileall -q sprix_sage.py sprix_a2a.py demo.py benchmark.py examples test_sprix_*.py test_benchmark.py`
 - [ ] `python -m unittest -v`
-- [ ] Benchmark changes are reported without treating synthetic results as real-world evidence
-- [ ] Documentation is updated where needed
-- [ ] No credentials, proprietary traces, Agent Cards, or personal data are included
+- [ ] Relevant benchmark or example executed
+- [ ] Synthetic results are clearly labeled and not presented as production evidence
+
+## Risk and compatibility
+
+- [ ] Permission, budget, deadline, and failure behavior considered
+- [ ] Backward-incompatible changes documented
+- [ ] No credentials, private traces, proprietary Agent Cards, or personal data included
+- [ ] Documentation updated where behavior changed

@@ -1,49 +1,57 @@
 name: Bug report
-description: Report reproducible incorrect routing or implementation behavior
+description: Report reproducible routing, scheduling, learning, or integration behavior.
 title: "[Bug]: "
 labels: ["bug"]
 body:
   - type: markdown
     attributes:
-      value: Thank you for helping improve Sprix SAGE Router. Do not include credentials, private traces, or personal data.
-  - type: textarea
-    id: description
+      value: Thanks for helping improve SAGE. Remove credentials, private traces, and personal data.
+  - type: input
+    id: revision
     attributes:
-      label: Description
-      description: What happened, and what did you expect?
+      label: Revision
+      description: Commit SHA, tag, or package version.
+    validations:
+      required: true
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - Router and constraints
+        - DAG assignment and scheduling
+        - Online learning and persistence
+        - A2A adapter
+        - Benchmark
+        - Documentation or CI
     validations:
       required: true
   - type: textarea
     id: reproduction
     attributes:
       label: Minimal reproduction
-      description: Include the smallest safe code sample or task configuration that reproduces the issue.
+      description: Include sanitized inputs, commands, and the smallest code sample that fails.
+      render: python
     validations:
       required: true
-  - type: input
-    id: version
-    attributes:
-      label: Revision or version
-      placeholder: Commit SHA or release tag
-  - type: dropdown
-    id: mode
-    attributes:
-      label: Affected routing mode
-      options:
-        - SELF
-        - COLLABORATE
-        - HANDOFF
-        - Eligibility or shared scoring
-        - Unknown
   - type: textarea
-    id: environment
+    id: expected
     attributes:
-      label: Environment
-      description: Python version, operating system, and relevant configuration.
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
   - type: checkboxes
     id: checks
     attributes:
-      label: Safety check
+      label: Safety checks
       options:
-        - label: I removed credentials, private traces, proprietary Agent Cards, and personal data.
+        - label: I removed secrets, private task content, proprietary Agent Cards, and personal data.
+          required: true
+        - label: I searched existing issues for the same behavior.
           required: true

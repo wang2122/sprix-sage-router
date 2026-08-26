@@ -18,14 +18,18 @@ git clone https://github.com/wang2122/sprix-sage-router.git
 cd sprix-sage-router
 python -m unittest -v
 python benchmark.py
+python -m examples.a2a_execution_plan
 ```
 
 Before submitting, run:
 
 ```bash
-python -m py_compile sprix_sage.py demo.py benchmark.py test_sprix_sage.py
+python -m compileall -q sprix_sage.py sprix_a2a.py demo.py benchmark.py examples test_sprix_*.py test_benchmark.py
 python -m unittest -v
+python benchmark.py --seeds 3 --tasks-per-seed 25 --json benchmark-smoke.json
 ```
+
+Use a focused branch such as `fix/permission-filter` or `feat/a2a-adapter`. Keep generated benchmark JSON, private traces, local environments, and credentials out of commits.
 
 ## Pull request expectations
 
@@ -34,5 +38,15 @@ python -m unittest -v
 - Report test results and any benchmark movement without overstating synthetic evidence.
 - Document backward-incompatible API changes.
 - Confirm that the contribution is compatible with the MIT License.
+
+## Areas for contribution
+
+- candidate retrieval and capability normalization;
+- A2A discovery, execution, streaming, and cancellation clients;
+- offline replay and stronger routing baselines;
+- calibration, drift, regret, and causal credit assignment;
+- adversarial bids, churn, privacy, and policy enforcement;
+- observability, persistence backends, and approval workflows;
+- documentation, reproducible examples, and accessibility.
 
 By participating, you agree to follow the project's [Code of Conduct](CODE_OF_CONDUCT.md).

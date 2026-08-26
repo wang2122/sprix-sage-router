@@ -1,5 +1,5 @@
 name: Feature request
-description: Propose an algorithm, evaluation, or A2A integration improvement
+description: Propose a focused routing, evaluation, integration, or operations improvement.
 title: "[Feature]: "
 labels: ["enhancement"]
 body:
@@ -7,23 +7,32 @@ body:
     id: problem
     attributes:
       label: Problem
-      description: What user, research, or operational problem should be solved?
+      description: What user, research, or operational problem should this solve?
     validations:
       required: true
   - type: textarea
     id: proposal
     attributes:
-      label: Proposed approach
-      description: Describe the algorithm or interface and its expected tradeoffs.
+      label: Proposed change
+      description: Describe the API, algorithm, evaluation, or documentation change.
     validations:
       required: true
   - type: textarea
     id: evidence
     attributes:
-      label: Evidence and references
-      description: Link related papers, benchmarks, protocols, or implementations.
+      label: Evidence and evaluation
+      description: What baseline, metric, test, or trace would show that the change works?
+    validations:
+      required: true
   - type: textarea
-    id: evaluation
+    id: risks
     attributes:
-      label: Evaluation plan
-      description: How should we know the change works and remains safe?
+      label: Constraints and risks
+      description: Cover permissions, budget, latency, privacy, compatibility, and failure behavior where relevant.
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope acknowledgement
+      options:
+        - label: I understand that synthetic results must not be presented as production evidence.
+          required: true
