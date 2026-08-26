@@ -20,5 +20,10 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
-      - run: python -m py_compile sprix_sage.py demo.py benchmark.py test_sprix_sage.py
+      - run: python -m compileall -q sprix_sage.py sprix_a2a.py demo.py benchmark.py examples test_sprix_*.py test_benchmark.py
       - run: python -m unittest -v
+      - run: python -m pip install .
+      - run: python -c "import sprix_sage, sprix_a2a"
+      - run: python -m examples.a2a_execution_plan
+      - run: python benchmark.py --seeds 3 --tasks-per-seed 25 --json benchmark-smoke.json
+      - run: python -c "import json; data=json.load(open('benchmark-smoke.json')); assert data['total_tasks'] == 25"
