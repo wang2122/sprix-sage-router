@@ -8,10 +8,13 @@ and latency differ from bids.
 
 from __future__ import annotations
 
+import argparse
 from collections import Counter
 from dataclasses import dataclass
 from itertools import combinations
+import json
 import math
+from pathlib import Path
 import random
 from statistics import mean, pstdev
 from typing import Mapping
@@ -20,6 +23,7 @@ from sprix_sage import Agent, ExecutionOutcome, Mode, Requirement, RouteDecision
 
 
 SKILLS = ("code", "research", "vision", "security", "writing")
+DEFAULT_SEEDS = (3, 7, 11, 19, 23)
 
 
 def sigmoid(value: float) -> float:
@@ -320,26 +324,114 @@ def run(seed: int = 11, tasks: int = 500) -> None:
     print(f"online model updates: {updates}")
 
 
-def run_suite(seeds: tuple[int, ...] = (3, 7, 11, 19, 23), tasks_per_seed: int = 500) -> None:
-    runs = [simulate(seed, tasks_per_seed)[0] for seed in seeds]
+def summarize_suite(
+    seeds: tuple[int, ...] = DEFAULT_SEEDS,
+    tasks_per_seed: int = 500,
+) -> dict[str, object]:
+    """Run a deterministic suite and return a machine-readable summary."""
+
+    if not seeds:
+        raise ValueError("at least one benchmark seed is required")
+    if tasks_per_seed <= 0:
+        raise ValueError("tasks_per_seed must be positive")
+    simulations = [simulate(seed, tasks_per_seed) for seed in seeds]
+    runs = [result[0] for result in simulations]
+    route_mix: Counter[str] = Counter()
+    model_updates: list[int] = []
+    for _, modes, updates in simulations:
+        route_mix.update(modes)
+        model_updates.append(updates)
+
+    strategies: dict[str, dict[str, dict[str, float]]] = {}
+    for name in runs[0]:
+        strategies[name] = {}
+        for metric in ("quality", "utility", "cost", "latency", "misses"):
+            values = [run_metrics[name][metric] for run_metrics in runs]
+            strategies[name][metric] = {
+                "mean": mean(values),
+                "population_stddev": pstdev(values),
+            }
+    return {
+        "schema_version": 1,
+        "simulator": "external_nonlinear",
+        "seeds": list(seeds),
+        "tasks_per_seed": tasks_per_seed,
+        "total_tasks": len(seeds) * tasks_per_seed,
+        "strategies": strategies,
+        "learned_route_mix": dict(sorted(route_mix.items())),
+        "online_model_updates": model_updates,
+    }
+
+
+def run_suite(
+    seeds: tuple[int, ...] = DEFAULT_SEEDS,
+    tasks_per_seed: int = 500,
+) -> dict[str, object]:
+    summary = summarize_suite(seeds, tasks_per_seed)
     print(
-        f"tasks: {len(seeds) * tasks_per_seed} "
+        f"tasks: {summary['total_tasks']} "
         f"({len(seeds)} seeds x {tasks_per_seed}; external nonlinear simulator)"
     )
     print("strategy       quality       utility       cost/budget   latency/deadline  deadline-miss")
-    for name in runs[0]:
-        values = {
-            metric: [run_metrics[name][metric] for run_metrics in runs]
-            for metric in ("quality", "utility", "cost", "latency", "misses")
-        }
+    strategies = summary["strategies"]
+    assert isinstance(strategies, dict)
+    for name, values in strategies.items():
         print(
-            f"{name:14s} {mean(values['quality']):.3f}+/-{pstdev(values['quality']):.3f}"
-            f"  {mean(values['utility']):.3f}+/-{pstdev(values['utility']):.3f}"
-            f"    {mean(values['cost']):.3f}+/-{pstdev(values['cost']):.3f}"
-            f"      {mean(values['latency']):.3f}+/-{pstdev(values['latency']):.3f}"
-            f"       {mean(values['misses']):4.1f}%"
+            f"{name:14s} {values['quality']['mean']:.3f}"
+            f"+/-{values['quality']['population_stddev']:.3f}"
+            f"  {values['utility']['mean']:.3f}"
+            f"+/-{values['utility']['population_stddev']:.3f}"
+            f"    {values['cost']['mean']:.3f}"
+            f"+/-{values['cost']['population_stddev']:.3f}"
+            f"      {values['latency']['mean']:.3f}"
+            f"+/-{values['latency']['population_stddev']:.3f}"
+            f"       {values['misses']['mean']:4.1f}%"
         )
+    print(f"learned route mix: {summary['learned_route_mix']}")
+    return summary
+
+
+def parse_seeds(value: str) -> tuple[int, ...]:
+    try:
+        seeds = tuple(int(item.strip()) for item in value.split(",") if item.strip())
+    except ValueError as error:
+        raise argparse.ArgumentTypeError("seeds must be comma-separated integers") from error
+    if not seeds:
+        raise argparse.ArgumentTypeError("at least one seed is required")
+    return seeds
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--seeds",
+        type=parse_seeds,
+        default=DEFAULT_SEEDS,
+        help="comma-separated deterministic seeds (default: 3,7,11,19,23)",
+    )
+    parser.add_argument(
+        "--tasks-per-seed",
+        type=int,
+        default=500,
+        help="number of synthetic tasks for every seed (default: 500)",
+    )
+    parser.add_argument(
+        "--json",
+        type=Path,
+        dest="json_path",
+        help="write the complete summary to this JSON file",
+    )
+    args = parser.parse_args()
+    if args.tasks_per_seed <= 0:
+        parser.error("--tasks-per-seed must be positive")
+    summary = run_suite(args.seeds, args.tasks_per_seed)
+    if args.json_path is not None:
+        args.json_path.write_text(
+            json.dumps(summary, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        print(f"json summary: {args.json_path}")
 
 
 if __name__ == "__main__":
-    run_suite()
+    main()
