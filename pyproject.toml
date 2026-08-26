@@ -30,4 +30,4 @@ Repository = "https://github.com/wang2122/sprix-sage-router"
 Issues = "https://github.com/wang2122/sprix-sage-router/issues"
 
 [tool.setuptools]
-py-modules = ["sprix_sage"]
+py-modules = ["sprix_sage", "sprix_a2a"]
