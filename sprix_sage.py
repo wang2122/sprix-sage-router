@@ -331,6 +331,7 @@ class SAGERouter:
         weights: RouterWeights | None = None,
         max_collaborators: int = 2,
         beam_width: int = 8,
+        assignment_beam_width: int = 4,
         exploration: bool = False,
         seed: int = 7,
     ) -> None:
@@ -345,12 +346,15 @@ class SAGERouter:
             raise ValueError(f"agent IDs must be unique: {names}")
         if incumbent_id not in self.agents:
             raise ValueError("incumbent_id must identify a registered agent")
-        if max_collaborators < 0 or beam_width <= 0:
-            raise ValueError("max_collaborators must be non-negative and beam_width positive")
+        if max_collaborators < 0 or beam_width <= 0 or assignment_beam_width <= 0:
+            raise ValueError(
+                "max_collaborators must be non-negative and beam widths positive"
+            )
         self.incumbent_id = incumbent_id
         self.weights = weights or RouterWeights()
         self.max_collaborators = max_collaborators
         self.beam_width = beam_width
+        self.assignment_beam_width = assignment_beam_width
         self.exploration = exploration
         self.rng = random.Random(seed)
         self.reliability = {agent_id: BetaBelief() for agent_id in self.agents}
@@ -751,12 +755,13 @@ class SAGERouter:
         task: Task,
         bids: Mapping[str, Bid],
         state: ExecutionState,
+        assignments: Mapping[str, str] | None = None,
     ) -> tuple[float, float, dict[str, str], float, float]:
         requirements = self._remaining_requirements(task, state)
         total_weight = sum(item.weight for item in requirements)
         weighted = 0.0
         bottlenecks: list[float] = []
-        assignments: dict[str, str] = {}
+        resolved_assignments: dict[str, str] = {}
         trust_total = uncertainty_total = 0.0
         for requirement in requirements:
             skills = {
@@ -765,21 +770,144 @@ class SAGERouter:
             }
             miss = math.prod(1.0 - score for score in skills.values())
             coverage = 1.0 - miss
-            best_agent = max(skills, key=skills.get)
-            best = skills[best_agent]
-            assignments[requirement.name] = best_agent
+            assigned_agent = (
+                assignments[requirement.name]
+                if assignments is not None
+                else max(skills, key=skills.get)
+            )
+            assigned_skill = skills[assigned_agent]
+            resolved_assignments[requirement.name] = assigned_agent
             weighted += requirement.weight * coverage
-            bottlenecks.append(min(1.0, best / max(requirement.minimum, 1e-9)))
-            trust, uncertainty = self._contextual_trust(best_agent, requirement.name)
+            bottlenecks.append(
+                min(1.0, assigned_skill / max(requirement.minimum, 1e-9))
+            )
+            trust, uncertainty = self._contextual_trust(
+                assigned_agent, requirement.name
+            )
             trust_total += requirement.weight * trust
             uncertainty_total += requirement.weight * uncertainty
         return (
             weighted / total_weight,
             min(bottlenecks),
-            assignments,
+            resolved_assignments,
             trust_total / total_weight,
             uncertainty_total / total_weight,
         )
+
+    def _partial_assignment_score(
+        self,
+        assignments: Mapping[str, str],
+        ordered: list[Requirement],
+        task: Task,
+        bids: Mapping[str, Bid],
+        state: ExecutionState,
+    ) -> float:
+        """Rank a topological assignment prefix for bounded beam retention."""
+
+        requirements = self._remaining_requirements(task, state)
+        total_weight = sum(item.weight for item in requirements)
+        finish: dict[str, float] = {
+            name: 0.0 for name in state.completed_requirements
+        }
+        agent_ready = {agent_id: 0.0 for agent_id in set(assignments.values())}
+        topology: set[tuple[str, str]] = set()
+        weighted_skill = trust_total = uncertainty_total = processed_weight = 0.0
+        bottleneck = 1.0
+
+        for item in ordered:
+            if item.name not in assignments:
+                break
+            agent_id = assignments[item.name]
+            skill = self._effective_skill(agent_id, item.name, bids[agent_id])
+            trust, uncertainty = self._contextual_trust(agent_id, item.name)
+            weighted_skill += item.weight * skill
+            trust_total += item.weight * trust
+            uncertainty_total += item.weight * uncertainty
+            processed_weight += item.weight
+            bottleneck = min(
+                bottleneck, min(1.0, skill / max(item.minimum, 1e-9))
+            )
+
+            dependency_ready = max(
+                (finish[name] for name in item.depends_on), default=0.0
+            )
+            start = max(dependency_ready, agent_ready.get(agent_id, 0.0))
+            duration = (
+                self._risk_adjusted_latency(agent_id, bids[agent_id])
+                * item.weight
+                / total_weight
+            )
+            finish[item.name] = start + duration
+            agent_ready[agent_id] = finish[item.name]
+            for dependency in item.depends_on:
+                dependency_agent = assignments.get(dependency)
+                if dependency_agent and dependency_agent != agent_id:
+                    topology.add((dependency_agent, agent_id))
+
+        if not processed_weight:
+            return 0.0
+        latency = max(finish.values(), default=0.0)
+        latency_scale = task.deadline_ms if math.isfinite(task.deadline_ms) else 10_000
+        return (
+            weighted_skill / processed_weight
+            + 0.50 * bottleneck
+            + 0.25 * trust_total / processed_weight
+            - self.weights.latency * latency / latency_scale
+            - self.weights.coordination
+            * task.coordination_overhead
+            * len(topology)
+            - self.weights.uncertainty * uncertainty_total / processed_weight
+        )
+
+    def _assignment_candidates(
+        self,
+        team: tuple[str, ...],
+        task: Task,
+        bids: Mapping[str, Bid],
+        state: ExecutionState,
+    ) -> list[dict[str, str]]:
+        """Search capability- and latency-aware role assignments for a team."""
+
+        ordered = self._topological_requirements(task, state)
+        greedy = {
+            item.name: max(
+                team,
+                key=lambda agent_id: self._effective_skill(
+                    agent_id, item.name, bids[agent_id]
+                ),
+            )
+            for item in ordered
+        }
+        if len(team) == 1:
+            return [greedy]
+
+        frontier: list[dict[str, str]] = [{}]
+        assigned_names: list[str] = []
+        for item in ordered:
+            assigned_names.append(item.name)
+            expanded: list[dict[str, str]] = []
+            for partial in frontier:
+                for agent_id in team:
+                    candidate = dict(partial)
+                    candidate[item.name] = agent_id
+                    expanded.append(candidate)
+            expanded.sort(
+                key=lambda candidate: (
+                    -self._partial_assignment_score(
+                        candidate, ordered, task, bids, state
+                    ),
+                    tuple(candidate[name] for name in assigned_names),
+                )
+            )
+            frontier = expanded[: self.assignment_beam_width]
+
+        greedy_key = tuple(greedy[item.name] for item in ordered)
+        candidate_keys = {
+            tuple(candidate[item.name] for item in ordered) for candidate in frontier
+        }
+        if greedy_key not in candidate_keys:
+            frontier.append(greedy)
+        return frontier
 
     def _cosine(self, left: str, right: str, requirements: tuple[Requirement, ...]) -> float:
         a = [self.agents[left].skills.get(item.name, 0.0) for item in requirements]
@@ -912,9 +1040,37 @@ class SAGERouter:
         bids: Mapping[str, Bid],
         state: ExecutionState,
     ) -> RouteDecision:
+        assignment_candidates = self._assignment_candidates(team, task, bids, state)
+        decisions = [
+            self._evaluate_assignment(
+                mode,
+                team,
+                task,
+                bids,
+                state,
+                assignments,
+                len(assignment_candidates),
+            )
+            for assignments in assignment_candidates
+        ]
+        feasible = [
+            decision for decision in decisions if self._team_feasible(decision, task)
+        ]
+        return max(feasible or decisions, key=lambda decision: decision.utility)
+
+    def _evaluate_assignment(
+        self,
+        mode: Mode,
+        team: tuple[str, ...],
+        task: Task,
+        bids: Mapping[str, Bid],
+        state: ExecutionState,
+        assignments: Mapping[str, str],
+        assignment_candidate_count: int,
+    ) -> RouteDecision:
         requirements = self._remaining_requirements(task, state)
         coverage, bottleneck, assignments, trust, uncertainty = self._coverage_and_assignment(
-            team, task, bids, state
+            team, task, bids, state, assignments
         )
         synergy, redundancy = self._team_terms(team, requirements)
         latency, topology = self._schedule(team, assignments, task, bids, state)
@@ -971,6 +1127,7 @@ class SAGERouter:
                 "switch_loss": switch_loss,
                 "uncertainty": uncertainty,
                 "exploration_bonus": exploration_bonus,
+                "assignment_search_candidates": float(assignment_candidate_count),
                 "model_updates": float(self.success_model.updates),
             },
             model_features=features,

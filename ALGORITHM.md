@@ -55,7 +55,9 @@ $$
 C_r(S)=1-\prod_{a\in S}(1-q_{a,r})
 $$
 
-The requirement is assigned to the team member with the highest calibrated capability. Weighted coverage and the lowest threshold-satisfaction ratio form separate model features, so one missing critical capability cannot be hidden by a high mean.
+Role assignment is optimized jointly with the schedule instead of assigning every requirement to its strongest calibrated agent in isolation. A bounded assignment beam expands owners in topological requirement order and retains prefixes using assigned capability, bottleneck satisfaction, contextual trust, posterior uncertainty, communication edges, and current critical-path latency. The original strongest-agent assignment is always retained as a fallback candidate. Complete assignments are compared with the same learned success model and constrained utility as route candidates, and the highest-utility deadline-feasible assignment represents the team.
+
+This matters when the strongest agent for several independent requirements would serialize all of them: assigning one requirement to a slightly weaker peer can reduce critical-path latency enough to satisfy the deadline. Weighted noisy-OR team coverage and the lowest assigned-owner threshold ratio remain separate model features, so one missing critical capability cannot be hidden by a high mean.
 
 Requirement dependencies induce communication edges whenever two dependent nodes are assigned to different agents. Any remaining disconnected executor component is linked to the route coordinator through a component root, so the reported topology covers the entire selected team and coordination overhead is not understated. Independent requirements on different agents can run concurrently; requirements assigned to the same agent are serialized. The resulting resource-constrained DAG schedule estimates critical-path latency before the route is accepted.
 
@@ -93,9 +95,17 @@ where:
 
 When a live route exists, switching loss depends on retained agents, progress, transferable context, and failure count. Replanning therefore becomes easier after repeated failures and harder after valuable non-transferable work has accumulated.
 
-## 8. Bounded beam team search
+## 8. Joint bounded team and role search
 
-SAGE evaluates SELF and every feasible single-agent HANDOFF directly. COLLABORATE teams are constructed using bounded beam search:
+SAGE evaluates SELF and every feasible single-agent HANDOFF directly. For every candidate team, it first searches requirement ownership with an assignment beam of width `assignment_beam_width`:
+
+1. traverse remaining requirements in topological order;
+2. expand every retained prefix with each possible executor;
+3. rank prefixes by assigned capability, bottleneck satisfaction, trust, uncertainty, partial critical-path latency, and induced communication edges;
+4. retain the best bounded set plus the original strongest-agent assignment;
+5. fully schedule complete assignments and choose the highest-utility feasible assignment when one exists.
+
+COLLABORATE teams are then constructed using the outer bounded beam search:
 
 1. start with the incumbent;
 2. expand each frontier team with every eligible peer;
@@ -104,9 +114,9 @@ SAGE evaluates SELF and every feasible single-agent HANDOFF directly. COLLABORAT
 5. retain the best `beam_width` partial teams;
 6. continue until the collaborator limit is reached.
 
-This searches multiple competing team prefixes and can retain an intermediate team even when it is not the single greedy winner. It is still a bounded approximation: SAGE does not claim a global optimum for the non-submodular full objective.
+The nested search preserves multiple competing team and ownership prefixes instead of committing to one greedy team or one greedy role map. It is still a bounded approximation: partial-assignment ranking is heuristic, and SAGE does not claim a global optimum for the non-submodular, resource-constrained full objective.
 
-For \(n\) eligible peers, beam width \(B\), collaborator limit \(k\), and \(|R|\) requirements, routing is approximately \(O(Bkn(|R|+k^2))\), excluding candidate retrieval.
+For \(n\) eligible peers, team beam width \(B_t\), assignment beam width \(B_a\), collaborator limit \(k\), and \(|R|\) requirements, the current reference implementation is approximately \(O(B_tknB_a k|R|^2)\), excluding candidate retrieval. The extra \(|R|\) factor comes from rescoring bounded assignment prefixes for clarity in the dependency-free implementation.
 
 ## 9. Evidence-aware online updates
 

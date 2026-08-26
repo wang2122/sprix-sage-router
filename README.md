@@ -44,6 +44,7 @@ SAGE is designed to sit above the [Agent2Agent (A2A) protocol](https://a2a-proto
 - **Complementarity before prestige.** A team is rewarded for marginal requirement coverage, not for collecting individually high-ranked but redundant agents.
 - **Contextual trust instead of one reputation score.** Reliability is learned per agent and per requirement, so success in coding does not automatically imply strength in research.
 - **Task-DAG role assignment.** Every remaining requirement is assigned to an executor; dependency edges become an inspectable communication topology and critical-path latency estimate.
+- **Joint team and role search.** A nested assignment beam can trade a small capability margin for parallel execution instead of rejecting a deadline-feasible team after greedy role assignment.
 - **Learned outcome model.** A regularized online predictor replaces the original fixed success equation and can later be swapped for a production reward model.
 - **Bounded team search.** Beam search compares multiple team prefixes instead of committing to one greedy sequence.
 - **Bid fidelity.** Quoted confidence, cost, and latency are calibrated against observed execution evidence.
@@ -61,7 +62,7 @@ $$
 C_r(S)=1-\prod_{a\in S}(1-q_{a,r})
 $$
 
-Each requirement is assigned to the strongest calibrated team member. SAGE schedules these assignments over the requirement DAG, serializing work assigned to one agent and parallelizing independent work assigned to different agents. Team-level cost and critical-path latency are checked again after construction.
+SAGE jointly searches calibrated requirement owners and their schedule. It can retain a slightly weaker executor when that choice parallelizes independent DAG nodes and improves constrained utility. Work assigned to one agent is serialized, work on independent agents can run concurrently, and team-level cost and critical-path latency are checked again after construction.
 
 Every feasible route is ranked by:
 
