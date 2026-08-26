@@ -3,6 +3,7 @@ import unittest
 
 from sprix_sage import (
     Agent,
+    Bid,
     ExecutionOutcome,
     ExecutionState,
     Mode,
@@ -104,6 +105,33 @@ class SAGERouterTests(unittest.TestCase):
         )
         decision = SAGERouter(agents, "current").route(task)
         self.assertNotIn("untrusted", decision.agents)
+
+    def test_bid_task_id_must_match_routed_task(self) -> None:
+        agents = [Agent("current", {"code": 0.9}, 0.02, 300)]
+        task = Task("expected", (Requirement("code"),), budget=0.20, deadline_ms=2000)
+        bid = Bid("current", "other", 0.01, 250)
+
+        with self.assertRaisesRegex(ValueError, "targets task 'other', expected 'expected'"):
+            SAGERouter(agents, "current").route(task, bids=[bid])
+
+    def test_bid_must_reference_a_registered_agent(self) -> None:
+        agents = [Agent("current", {"code": 0.9}, 0.02, 300)]
+        task = Task("code", (Requirement("code"),), budget=0.20, deadline_ms=2000)
+        bid = Bid("unknown", "code", 0.01, 250)
+
+        with self.assertRaisesRegex(ValueError, "unknown agent: 'unknown'"):
+            SAGERouter(agents, "current").route(task, bids=[bid])
+
+    def test_duplicate_bids_for_an_agent_are_rejected(self) -> None:
+        agents = [Agent("current", {"code": 0.9}, 0.02, 300)]
+        task = Task("code", (Requirement("code"),), budget=0.20, deadline_ms=2000)
+        bids = [
+            Bid("current", "code", 0.01, 250),
+            Bid("current", "code", 0.02, 300),
+        ]
+
+        with self.assertRaisesRegex(ValueError, "duplicate bid for agent: 'current'"):
+            SAGERouter(agents, "current").route(task, bids=bids)
 
     def test_outcomes_update_reliability_and_pair_synergy(self) -> None:
         agents = [
