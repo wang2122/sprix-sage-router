@@ -258,6 +258,45 @@ class RouteDecision:
     diagnostics: Mapping[str, float] = field(default_factory=dict)
     model_features: Mapping[str, float] = field(default_factory=dict, repr=False)
 
+    def to_dict(self) -> dict[str, object]:
+        """Return a stable, JSON-serializable representation for audit logs."""
+
+        return {
+            "mode": self.mode.value,
+            "agents": list(self.agents),
+            "utility": self.utility,
+            "success_probability": self.success_probability,
+            "coverage": self.coverage,
+            "cost": self.cost,
+            "latency_ms": self.latency_ms,
+            "risk": self.risk,
+            "explanation": self.explanation,
+            "assignments": dict(self.assignments),
+            "topology": [list(edge) for edge in self.topology],
+            "switch_recommended": self.switch_recommended,
+            "diagnostics": dict(self.diagnostics),
+        }
+
+
+@dataclass(frozen=True)
+class RoutingTrace:
+    """Inspectable result containing the winner and all feasible alternatives."""
+
+    selected: RouteDecision
+    alternatives: tuple[RouteDecision, ...]
+    eligible_agents: tuple[str, ...]
+    excluded_agents: Mapping[str, tuple[str, ...]] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "selected": self.selected.to_dict(),
+            "alternatives": [decision.to_dict() for decision in self.alternatives],
+            "eligible_agents": list(self.eligible_agents),
+            "excluded_agents": {
+                agent_id: list(reasons) for agent_id, reasons in self.excluded_agents.items()
+            },
+        }
+
 
 @dataclass(frozen=True)
 class ExecutionOutcome:
@@ -326,15 +365,27 @@ class SAGERouter:
         bids: Iterable[Bid] | None = None,
         state: ExecutionState | None = None,
     ) -> RouteDecision:
+        """Select the highest-utility feasible route."""
+
+        return self.route_with_trace(task, bids, state).selected
+
+    def route_with_trace(
+        self,
+        task: Task,
+        bids: Iterable[Bid] | None = None,
+        state: ExecutionState | None = None,
+    ) -> RoutingTrace:
+        """Route a task and retain feasible alternatives and exclusion reasons."""
+
         state = state or ExecutionState()
         self._validate_state(task, state)
         self._draw_cache = {}
         bid_map = self._prepare_bids(task, bids)
-        eligible = [
-            agent_id
+        exclusions = {
+            agent_id: self._exclusion_reasons(agent, task, bid_map[agent_id], state)
             for agent_id, agent in self.agents.items()
-            if agent_id not in state.failed_agents and self._eligible(agent, task, bid_map[agent_id])
-        ]
+        }
+        eligible = [agent_id for agent_id, reasons in exclusions.items() if not reasons]
         if not eligible:
             raise RuntimeError("no eligible agent satisfies permissions, budget, and deadline")
 
@@ -358,7 +409,22 @@ class SAGERouter:
         best = max(decisions, key=lambda decision: decision.utility)
         active = tuple(state.active_agents)
         switched = bool(active) and (best.mode != state.active_mode or set(best.agents) != set(active))
-        return replace(best, switch_recommended=switched)
+        selected = replace(best, switch_recommended=switched)
+        alternatives = tuple(
+            sorted(
+                (selected if decision is best else decision for decision in decisions),
+                key=lambda decision: decision.utility,
+                reverse=True,
+            )
+        )
+        return RoutingTrace(
+            selected=selected,
+            alternatives=alternatives,
+            eligible_agents=tuple(eligible),
+            excluded_agents={
+                agent_id: reasons for agent_id, reasons in exclusions.items() if reasons
+            },
+        )
 
     def record_outcome(
         self,
@@ -453,12 +519,30 @@ class SAGERouter:
         return quote * (1.0 + 0.50 * agent.load) / max(agent.availability, 0.10)
 
     def _eligible(self, agent: Agent, task: Task, bid: Bid) -> bool:
-        return (
-            agent.availability > 0
-            and task.required_permissions.issubset(agent.permissions)
-            and self._risk_adjusted_cost(agent.agent_id, bid) <= task.budget
-            and self._risk_adjusted_latency(agent.agent_id, bid) <= task.deadline_ms
-        )
+        return not self._exclusion_reasons(agent, task, bid, ExecutionState())
+
+    def _exclusion_reasons(
+        self,
+        agent: Agent,
+        task: Task,
+        bid: Bid,
+        state: ExecutionState,
+    ) -> tuple[str, ...]:
+        reasons: list[str] = []
+        if agent.agent_id in state.failed_agents:
+            reasons.append("failed")
+        if agent.availability <= 0:
+            reasons.append("unavailable")
+        missing = sorted(task.required_permissions - agent.permissions)
+        if missing:
+            reasons.append(f"missing_permissions:{','.join(missing)}")
+        adjusted_cost = self._risk_adjusted_cost(agent.agent_id, bid)
+        if adjusted_cost > task.budget:
+            reasons.append(f"cost:{adjusted_cost:.6g}>{task.budget:.6g}")
+        adjusted_latency = self._risk_adjusted_latency(agent.agent_id, bid)
+        if adjusted_latency > task.deadline_ms:
+            reasons.append(f"latency_ms:{adjusted_latency:.6g}>{task.deadline_ms:.6g}")
+        return tuple(reasons)
 
     def _belief_value(self, key: tuple[str, ...], belief: BetaBelief) -> float:
         if not self.exploration:

@@ -1,3 +1,4 @@
+import json
 import unittest
 
 from sprix_sage import (
@@ -6,12 +7,39 @@ from sprix_sage import (
     ExecutionState,
     Mode,
     Requirement,
+    RoutingTrace,
     SAGERouter,
     Task,
 )
 
 
 class SAGERouterTests(unittest.TestCase):
+    def test_route_trace_explains_excluded_agents_and_serializes(self) -> None:
+        agents = [
+            Agent("current", {"finance": 0.82}, 0.02, 300, frozenset({"ledger:write"})),
+            Agent("untrusted", {"finance": 1.0}, 0.00, 100),
+            Agent("offline", {"finance": 1.0}, 0.00, 100, availability=0.0),
+        ]
+        task = Task(
+            "settle-with-trace",
+            (Requirement("finance"),),
+            required_permissions=frozenset({"ledger:write"}),
+            budget=0.20,
+            deadline_ms=2000,
+        )
+
+        trace = SAGERouter(agents, "current").route_with_trace(task)
+
+        self.assertIsInstance(trace, RoutingTrace)
+        self.assertEqual(trace.selected.mode, Mode.SELF)
+        self.assertEqual(trace.eligible_agents, ("current",))
+        self.assertIn("missing_permissions:ledger:write", trace.excluded_agents["untrusted"])
+        self.assertIn("unavailable", trace.excluded_agents["offline"])
+        self.assertEqual(trace.alternatives[0], trace.selected)
+        encoded = json.dumps(trace.to_dict(), sort_keys=True)
+        self.assertIn('"selected"', encoded)
+        self.assertNotIn("model_features", encoded)
+
     def test_duplicate_agent_ids_are_rejected(self) -> None:
         agents = [
             Agent("duplicate", {"planning": 0.95}, 0.02, 300),
