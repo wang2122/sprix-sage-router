@@ -1,4 +1,53 @@
-# Contributing to Sprix SAGE RouterThank you for helping improve Sprix SAGE Router. The project welcomes focused contributions to routing algorithms, evaluation, A2A integration, reliability, documentation, and security.## Before opening a pull request1. Open an issue for substantial algorithm or API changes so the design can be discussed first.2. Keep changes small, reviewable, and scoped to one concern.3. Add or update tests for behavioral changes.4. Do not include private task traces, credentials, proprietary Agent Cards, or personal data.## DevelopmentThe reference implementation supports Python 3.10+ and has no runtime dependencies.```bashgit clone https://github.com/wang2122/sprix-sage-router.gitcd sprix-sage-routerpython -m unittest -vpython benchmark.pypython -m examples.a2a_execution_plan```Before submitting, run:```bashpython -m compileall -q sprix_sage.py sprix_a2a.py demo.py benchmark.py examples test_sprix_*.py test_benchmark.pypython -m unittest -vpython benchmark.py --seeds 3 --tasks-per-seed 25 --json benchmark-smoke.json```Use a focused branch such as `fix/permission-filter` or `feat/a2a-adapter`. Keep generated benchmark JSON, private traces, local environments, and credentials out of commits.## Pull request expectations- Explain the user or research problem being solved.- Describe changes to utility, constraints, calibration, or update rules.- Report test results and any benchmark movement without overstating synthetic evidence.- Document backward-incompatible API changes.- Confirm that the contribution is compatible with the MIT License.## Areas for contribution- candidate retrieval and capability normalization;- A2A discovery, execution, streaming, and cancellation clients;- offline replay and stronger routing baselines;- calibration, drift, regret, and causal credit assignment;- adversarial bids, churn, privacy, and policy enforcement;- observability, persistence backends, and approval workflows;- documentation, reproducible examples, and accessibility.By participating, you agree to follow the project's [Code of Conduct](CODE_OF_CONDUCT.md).
+# Contributing to Sprix SAGE Router
+
+Thank you for helping improve Sprix SAGE Router. The project welcomes focused contributions to routing algorithms, evaluation, A2A integration, reliability, documentation, and security.
+
+## Before opening a pull request
+
+1. Open an issue for substantial algorithm or API changes so the design can be discussed first.
+2. Keep changes small, reviewable, and scoped to one concern.
+3. Add or update tests for behavioral changes.
+4. Do not include private task traces, credentials, proprietary Agent Cards, or personal data.
+
+## Development
+
+The reference implementation supports Python 3.10+ and has no runtime dependencies.
+
+```bash
+git clone https://github.com/wang2122/sprix-sage-router.git
+cd sprix-sage-router
+python -m unittest -v
+python benchmark.py
+python -m examples.a2a_execution_plan
+```
+
+Before submitting, run:
+
+```bash
+python -m compileall -q sprix_sage.py sprix_a2a.py demo.py benchmark.py examples test_sprix_*.py test_benchmark.py
+python -m unittest -v
+python benchmark.py --seeds 3 --tasks-per-seed 25 --json benchmark-smoke.json
+```
+
+Use a focused branch such as `fix/permission-filter` or `feat/a2a-adapter`. Keep generated benchmark JSON, private traces, local environments, and credentials out of commits.
+
+## Pull request expectations
+
+- Explain the user or research problem being solved.
+- Describe changes to utility, constraints, calibration, or update rules.
+- Report test results and any benchmark movement without overstating synthetic evidence.
+- Document backward-incompatible API changes.
+- Confirm that the contribution is compatible with the MIT License.
+
+## Areas for contribution
+
+- candidate retrieval and capability normalization;
+- A2A discovery, execution, streaming, and cancellation clients;
+- offline replay and stronger routing baselines;
+- calibration, drift, regret, and causal credit assignment;
+- adversarial bids, churn, privacy, and policy enforcement;
+- observability, persistence backends, and approval workflows;
+- documentation, reproducible examples, and accessibility.
 
 ## Pre-submission checklist
 
@@ -8,3 +57,5 @@ Before opening a pull request, confirm that the change is focused and reproducib
 - If you run the benchmark smoke test, inspect the output locally and remove the generated JSON before committing.
 - Add a regression test or a runnable example when the change alters routing, planning, persistence, or integration behavior.
 - Keep documentation claims tied to an executable command, a checked-in fixture, or a clearly labeled synthetic result.
+
+By participating, you agree to follow the project's [Code of Conduct](CODE_OF_CONDUCT.md).
