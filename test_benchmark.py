@@ -4,6 +4,7 @@ import unittest
 from pathlib import Path
 
 from benchmark import parse_seeds, summarize_suite
+from benchmark_evaluator import HIDDEN_AGENTS, PAIR_COMPATIBILITY
 
 
 class BenchmarkTests(unittest.TestCase):
@@ -13,9 +14,23 @@ class BenchmarkTests(unittest.TestCase):
 
         self.assertEqual(first, second)
         self.assertEqual(first["total_tasks"], 8)
-        self.assertEqual(first["online_model_updates"], [8])
-        self.assertEqual(sum(first["learned_route_mix"].values()), 8)
+        self.assertEqual(first["model_updates"]["learned_no_explore"], [8])
+        self.assertEqual(
+            sum(first["route_mix_by_strategy"]["learned_no_explore"].values()),
+            8,
+        )
+        self.assertIn("random_team", first["strategies"])
+        self.assertIn("greedy_team", first["strategies"])
+        self.assertIn("learned_random_init", first["strategies"])
+        self.assertIn("learning_curve", first)
         json.dumps(first, sort_keys=True)
+
+    def test_evaluator_is_structurally_held_out(self) -> None:
+        self.assertLess(HIDDEN_AGENTS["generalist"].skills["code"], 0.60)
+        self.assertGreater(HIDDEN_AGENTS["researcher"].skills["writing"], 0.90)
+        self.assertTrue(all(value > 0 for value in PAIR_COMPATIBILITY.values()))
+        self.assertTrue(any(value < 1 for value in PAIR_COMPATIBILITY.values()))
+        self.assertTrue(any(value > 1 for value in PAIR_COMPATIBILITY.values()))
 
     def test_seed_parser_accepts_a_comma_separated_list(self) -> None:
         self.assertEqual(parse_seeds("3, 7,11"), (3, 7, 11))

@@ -1,14 +1,15 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "sprix-sage-router"
-version = "0.2.0"
+version = "0.3.0"
 description = "Progress-aware constrained routing and task-DAG scheduling for A2A agent networks"
 readme = "README.md"
 requires-python = ">=3.10"
-license = {text = "MIT"}
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [{name = "Sprix AI at 屿智同行"}]
 maintainers = [{name = "Yichen Wang"}]
 keywords = ["a2a", "multi-agent", "routing", "task-matching", "agent-collaboration"]
@@ -16,12 +17,19 @@ classifiers = [
   "Development Status :: 3 - Alpha",
   "Intended Audience :: Developers",
   "Intended Audience :: Science/Research",
-  "License :: OSI Approved :: MIT License",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+[project.optional-dependencies]
+dev = [
+  "build>=1.2",
+  "mypy>=1.11",
+  "ruff>=0.6",
+  "twine>=5.1",
 ]
 
 [project.urls]
@@ -30,4 +38,30 @@ Repository = "https://github.com/wang2122/sprix-sage-router"
 Issues = "https://github.com/wang2122/sprix-sage-router/issues"
 
 [tool.setuptools]
-py-modules = ["sprix_sage", "sprix_a2a"]
+py-modules = ["sprix_sage", "sprix_learning", "sprix_types", "sprix_a2a"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
+
+[tool.mypy]
+python_version = "3.10"
+files = [
+  "sprix_sage.py",
+  "sprix_learning.py",
+  "sprix_types.py",
+  "sprix_a2a.py",
+  "benchmark.py",
+  "benchmark_evaluator.py",
+  "benchmark_scaling.py",
+  "demo.py",
+  "examples",
+]
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_configs = true
+warn_unused_ignores = true

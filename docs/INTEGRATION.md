@@ -58,7 +58,11 @@ Bid ingestion is fail-closed: every supplied bid must target the routed task,
 reference a registered agent, and be the only bid for that agent. Invalid bid
 batches raise `ValueError` instead of being silently ignored or overwritten.
 
-The execution plan contains ownership, executors, requirement assignments, dependency edges, communication edges, estimated cost and latency, and the routing rationale. It intentionally contains no credentials and performs no network request.
+The execution plan contains ownership, executors, requirement assignments, dependency edges, communication edges, workload-sensitive estimated cost and latency, and the routing rationale. It intentionally contains no credentials and performs no network request. Inspect `decision.feasible` and `decision.constraint_violations` before dispatch; degraded plans never relax permissions but may exceed budget or deadline.
+
+Only provide `ExecutionOutcome.pair_scores` when an evaluator measured a pair's
+collaboration effect directly. Overall team success and individual scores do not
+identify synergy, so the router no longer derives pair credit from them.
 
 ## Transport responsibilities
 

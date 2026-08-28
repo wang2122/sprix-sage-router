@@ -7,321 +7,29 @@ assignment, and bounded beam search over candidate teams.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field, replace
-from enum import Enum
-from itertools import combinations
 import math
 import random
+from dataclasses import replace
+from itertools import combinations
 from typing import Iterable, Mapping
+
+from sprix_learning import BetaBelief, OnlineSuccessModel
+from sprix_types import (
+    Agent,
+    Bid,
+    ExecutionOutcome,
+    ExecutionState,
+    Mode,
+    Requirement,
+    RouteDecision,
+    RouterWeights,
+    RoutingTrace,
+    Task,
+)
 
 
 def _clip(value: float, low: float = 0.0, high: float = 1.0) -> float:
     return max(low, min(high, value))
-
-
-def _sigmoid(value: float) -> float:
-    if value >= 0:
-        z = math.exp(-value)
-        return 1.0 / (1.0 + z)
-    z = math.exp(value)
-    return z / (1.0 + z)
-
-
-class Mode(str, Enum):
-    SELF = "self"
-    COLLABORATE = "collaborate"
-    HANDOFF = "handoff"
-
-
-@dataclass(frozen=True)
-class Requirement:
-    name: str
-    weight: float = 1.0
-    minimum: float = 0.55
-    depends_on: tuple[str, ...] = ()
-
-    def __post_init__(self) -> None:
-        if not self.name:
-            raise ValueError("requirement name must not be empty")
-        if not math.isfinite(self.weight) or self.weight <= 0:
-            raise ValueError("requirement weight must be a positive finite number")
-        if not 0 <= self.minimum <= 1:
-            raise ValueError("requirement minimum must be in [0, 1]")
-        if self.name in self.depends_on:
-            raise ValueError("a requirement cannot depend on itself")
-
-
-@dataclass(frozen=True)
-class Task:
-    task_id: str
-    requirements: tuple[Requirement, ...]
-    value: float = 1.0
-    budget: float = math.inf
-    deadline_ms: float = math.inf
-    required_permissions: frozenset[str] = frozenset()
-    risk_tolerance: float = 0.5
-    progress: float = 0.0
-    handoff_friction: float = 0.25
-    coordination_overhead: float = 0.06
-    context_transferability: float = 0.70
-    replan_friction: float = 0.03
-
-    def __post_init__(self) -> None:
-        if not self.requirements:
-            raise ValueError("task must have at least one requirement")
-        if not math.isfinite(self.value) or self.value <= 0:
-            raise ValueError("value must be a positive finite number")
-        if math.isnan(self.budget) or self.budget <= 0:
-            raise ValueError("budget must be a positive number or infinity")
-        if math.isnan(self.deadline_ms) or self.deadline_ms <= 0:
-            raise ValueError("deadline must be a positive number or infinity")
-        for value, label in (
-            (self.risk_tolerance, "risk_tolerance"),
-            (self.progress, "progress"),
-            (self.context_transferability, "context_transferability"),
-        ):
-            if not 0 <= value <= 1:
-                raise ValueError(f"{label} must be in [0, 1]")
-        if self.handoff_friction < 0 or self.coordination_overhead < 0 or self.replan_friction < 0:
-            raise ValueError("routing friction and overhead values must be non-negative")
-        self._validate_dag()
-
-    def _validate_dag(self) -> None:
-        names = [item.name for item in self.requirements]
-        if len(names) != len(set(names)):
-            raise ValueError("requirement names must be unique")
-        name_set = set(names)
-        for item in self.requirements:
-            unknown = set(item.depends_on) - name_set
-            if unknown:
-                raise ValueError(f"unknown requirement dependencies: {sorted(unknown)}")
-
-        graph = {item.name: item.depends_on for item in self.requirements}
-        visiting: set[str] = set()
-        visited: set[str] = set()
-
-        def visit(name: str) -> None:
-            if name in visiting:
-                raise ValueError("requirement dependencies must form a DAG")
-            if name in visited:
-                return
-            visiting.add(name)
-            for dependency in graph[name]:
-                visit(dependency)
-            visiting.remove(name)
-            visited.add(name)
-
-        for name in names:
-            visit(name)
-
-
-@dataclass(frozen=True)
-class ExecutionState:
-    """Live state used when routing or replanning an in-flight task."""
-
-    active_agents: tuple[str, ...] = ()
-    active_mode: Mode = Mode.SELF
-    completed_requirements: frozenset[str] = frozenset()
-    progress: float | None = None
-    transferable_context: float | None = None
-    failed_agents: frozenset[str] = frozenset()
-    failure_count: int = 0
-
-    def __post_init__(self) -> None:
-        if self.progress is not None and not 0 <= self.progress <= 1:
-            raise ValueError("state progress must be in [0, 1]")
-        if self.transferable_context is not None and not 0 <= self.transferable_context <= 1:
-            raise ValueError("transferable_context must be in [0, 1]")
-        if self.failure_count < 0:
-            raise ValueError("failure_count must be non-negative")
-
-
-@dataclass(frozen=True)
-class Agent:
-    agent_id: str
-    skills: Mapping[str, float]
-    cost: float
-    latency_ms: float
-    permissions: frozenset[str] = frozenset()
-    availability: float = 1.0
-    load: float = 0.0
-
-    def __post_init__(self) -> None:
-        if not math.isfinite(self.cost) or self.cost < 0:
-            raise ValueError("cost must be a non-negative finite number")
-        if not math.isfinite(self.latency_ms) or self.latency_ms < 0:
-            raise ValueError("latency must be a non-negative finite number")
-        if not 0 <= self.availability <= 1 or not 0 <= self.load <= 1:
-            raise ValueError("availability and load must be in [0, 1]")
-        if any(not 0 <= score <= 1 for score in self.skills.values()):
-            raise ValueError("skill scores must be in [0, 1]")
-
-
-@dataclass(frozen=True)
-class Bid:
-    agent_id: str
-    task_id: str
-    quoted_cost: float
-    promised_latency_ms: float
-    confidence: float = 0.7
-
-    def __post_init__(self) -> None:
-        if not self.quoted_cost >= 0 or not self.promised_latency_ms >= 0:
-            raise ValueError("bid cost and latency must be non-negative")
-        if not 0 <= self.confidence <= 1:
-            raise ValueError("bid confidence must be in [0, 1]")
-
-
-@dataclass
-class BetaBelief:
-    alpha: float = 2.0
-    beta: float = 2.0
-
-    @property
-    def mean(self) -> float:
-        return self.alpha / (self.alpha + self.beta)
-
-    @property
-    def uncertainty(self) -> float:
-        total = self.alpha + self.beta
-        return math.sqrt((self.alpha * self.beta) / (total * total * (total + 1)))
-
-    def draw(self, rng: random.Random) -> float:
-        return rng.betavariate(self.alpha, self.beta)
-
-    def update(self, score: float | bool, weight: float = 1.0) -> None:
-        value = float(score)
-        if not 0 <= value <= 1:
-            raise ValueError("belief update score must be in [0, 1]")
-        if weight <= 0:
-            raise ValueError("belief update weight must be positive")
-        self.alpha += weight * value
-        self.beta += weight * (1.0 - value)
-
-
-@dataclass
-class OnlineSuccessModel:
-    """Small online logistic model updated from execution outcomes."""
-
-    learning_rate: float = 0.08
-    l2: float = 0.001
-    updates: int = 0
-    bias: float = -1.15
-    weights: dict[str, float] = field(
-        default_factory=lambda: {
-            "coverage": 2.35,
-            "bottleneck": 1.35,
-            "trust": 0.80,
-            "synergy": 0.35,
-            "redundancy": -0.45,
-            "coordination_loss": -0.55,
-            "handoff_loss": -0.70,
-            "switch_loss": -0.55,
-            "load": -0.35,
-        }
-    )
-
-    def predict(self, features: Mapping[str, float]) -> float:
-        logit = self.bias + sum(self.weights.get(name, 0.0) * value for name, value in features.items())
-        return _clip(_sigmoid(logit), 0.01, 0.99)
-
-    def update(self, features: Mapping[str, float], outcome: float) -> None:
-        prediction = self.predict(features)
-        error = _clip(outcome) - prediction
-        rate = self.learning_rate / math.sqrt(1.0 + self.updates / 50.0)
-        self.bias += rate * error
-        for name in self.weights:
-            value = features.get(name, 0.0)
-            self.weights[name] += rate * (error * value - self.l2 * self.weights[name])
-        self.updates += 1
-
-
-@dataclass(frozen=True)
-class RouterWeights:
-    cost: float = 0.18
-    latency: float = 0.10
-    risk: float = 0.12
-    handoff: float = 0.22
-    coordination: float = 0.08
-    uncertainty: float = 0.05
-    exploration: float = 0.08
-
-
-@dataclass(frozen=True)
-class RouteDecision:
-    mode: Mode
-    agents: tuple[str, ...]
-    utility: float
-    success_probability: float
-    coverage: float
-    cost: float
-    latency_ms: float
-    risk: float
-    explanation: str
-    assignments: Mapping[str, str] = field(default_factory=dict)
-    topology: tuple[tuple[str, str], ...] = ()
-    switch_recommended: bool = False
-    diagnostics: Mapping[str, float] = field(default_factory=dict)
-    model_features: Mapping[str, float] = field(default_factory=dict, repr=False)
-
-    def to_dict(self) -> dict[str, object]:
-        """Return a stable, JSON-serializable representation for audit logs."""
-
-        return {
-            "mode": self.mode.value,
-            "agents": list(self.agents),
-            "utility": self.utility,
-            "success_probability": self.success_probability,
-            "coverage": self.coverage,
-            "cost": self.cost,
-            "latency_ms": self.latency_ms,
-            "risk": self.risk,
-            "explanation": self.explanation,
-            "assignments": dict(self.assignments),
-            "topology": [list(edge) for edge in self.topology],
-            "switch_recommended": self.switch_recommended,
-            "diagnostics": dict(self.diagnostics),
-        }
-
-
-@dataclass(frozen=True)
-class RoutingTrace:
-    """Inspectable result containing the winner and all feasible alternatives."""
-
-    selected: RouteDecision
-    alternatives: tuple[RouteDecision, ...]
-    eligible_agents: tuple[str, ...]
-    excluded_agents: Mapping[str, tuple[str, ...]] = field(default_factory=dict)
-
-    def to_dict(self) -> dict[str, object]:
-        return {
-            "selected": self.selected.to_dict(),
-            "alternatives": [decision.to_dict() for decision in self.alternatives],
-            "eligible_agents": list(self.eligible_agents),
-            "excluded_agents": {
-                agent_id: list(reasons) for agent_id, reasons in self.excluded_agents.items()
-            },
-        }
-
-
-@dataclass(frozen=True)
-class ExecutionOutcome:
-    """Observed evidence used for contextual and bid-calibration updates."""
-
-    success: float | bool
-    agent_scores: Mapping[str, float] = field(default_factory=dict)
-    requirement_scores: Mapping[str, float] = field(default_factory=dict)
-    actual_cost: float | None = None
-    actual_latency_ms: float | None = None
-
-    def __post_init__(self) -> None:
-        values = [float(self.success), *self.agent_scores.values(), *self.requirement_scores.values()]
-        if any(not 0 <= value <= 1 for value in values):
-            raise ValueError("outcome scores must be in [0, 1]")
-        if self.actual_cost is not None and self.actual_cost < 0:
-            raise ValueError("actual_cost must be non-negative")
-        if self.actual_latency_ms is not None and self.actual_latency_ms < 0:
-            raise ValueError("actual_latency_ms must be non-negative")
 
 
 class SAGERouter:
@@ -338,8 +46,12 @@ class SAGERouter:
         max_collaborators: int = 2,
         beam_width: int = 8,
         assignment_beam_width: int = 4,
+        candidate_limit: int | None = 12,
+        cost_activation_fraction: float = 0.15,
+        allow_degraded: bool = True,
         exploration: bool = False,
         seed: int = 7,
+        success_model: OnlineSuccessModel | None = None,
     ) -> None:
         self.agents: dict[str, Agent] = {}
         duplicate_ids: set[str] = set()
@@ -356,11 +68,18 @@ class SAGERouter:
             raise ValueError(
                 "max_collaborators must be non-negative and beam widths positive"
             )
+        if candidate_limit is not None and candidate_limit <= 0:
+            raise ValueError("candidate_limit must be positive or None")
+        if not 0 <= cost_activation_fraction <= 1:
+            raise ValueError("cost_activation_fraction must be in [0, 1]")
         self.incumbent_id = incumbent_id
         self.weights = weights or RouterWeights()
         self.max_collaborators = max_collaborators
         self.beam_width = beam_width
         self.assignment_beam_width = assignment_beam_width
+        self.candidate_limit = candidate_limit
+        self.cost_activation_fraction = cost_activation_fraction
+        self.allow_degraded = allow_degraded
         self.exploration = exploration
         self.rng = random.Random(seed)
         self.reliability = {agent_id: BetaBelief() for agent_id in self.agents}
@@ -368,8 +87,11 @@ class SAGERouter:
         self.synergy: dict[tuple[str, str], BetaBelief] = {}
         self.cost_fidelity = {agent_id: BetaBelief() for agent_id in self.agents}
         self.latency_fidelity = {agent_id: BetaBelief() for agent_id in self.agents}
-        self.success_model = OnlineSuccessModel()
+        self.success_model = success_model or OnlineSuccessModel()
         self._draw_cache: dict[tuple[str, ...], float] = {}
+        self._effective_skill_cache: dict[tuple[str, str], float] = {}
+        self._cost_cache: dict[str, float] = {}
+        self._latency_cache: dict[str, float] = {}
 
     def route(
         self,
@@ -392,41 +114,60 @@ class SAGERouter:
         state = state or ExecutionState()
         self._validate_state(task, state)
         self._draw_cache = {}
+        self._effective_skill_cache = {}
+        self._cost_cache = {}
+        self._latency_cache = {}
         bid_map = self._prepare_bids(task, bids)
-        exclusions = {
-            agent_id: self._exclusion_reasons(agent, task, bid_map[agent_id], state)
+        hard_exclusions = {
+            agent_id: self._hard_exclusion_reasons(agent, task, state)
             for agent_id, agent in self.agents.items()
         }
-        eligible = [agent_id for agent_id, reasons in exclusions.items() if not reasons]
-        if not eligible:
-            raise RuntimeError("no eligible agent satisfies permissions, budget, and deadline")
+        hard_eligible = [
+            agent_id for agent_id, reasons in hard_exclusions.items() if not reasons
+        ]
+        if not hard_eligible:
+            raise RuntimeError("no authorized and available agent can execute the task")
+        eligible = self._prefilter_candidates(task, hard_eligible, bid_map, state)
+        prefiltered = tuple(sorted(set(hard_eligible) - set(eligible)))
 
-        decisions: list[RouteDecision] = []
+        candidates: list[RouteDecision] = []
         if self.incumbent_id in eligible:
             self_decision = self._evaluate(Mode.SELF, (self.incumbent_id,), task, bid_map, state)
-            if self._team_feasible(self_decision, task):
-                decisions.append(self_decision)
-            decisions.extend(self._beam_collaboration_decisions(task, eligible, bid_map, state))
+            candidates.append(self_decision)
+            candidates.extend(
+                self._beam_collaboration_decisions(task, eligible, bid_map, state)
+            )
 
         for agent_id in eligible:
             if agent_id == self.incumbent_id:
                 continue
             decision = self._evaluate(Mode.HANDOFF, (agent_id,), task, bid_map, state)
-            if self._team_feasible(decision, task):
-                decisions.append(decision)
+            candidates.append(decision)
 
-        if not decisions:
+        decisions = [decision for decision in candidates if decision.feasible]
+        if not decisions and not self.allow_degraded:
             raise RuntimeError("no feasible route satisfies team-level budget and deadline constraints")
-
-        best = max(decisions, key=lambda decision: decision.utility)
+        if decisions:
+            best = max(decisions, key=lambda decision: decision.utility)
+        else:
+            best = min(
+                candidates,
+                key=lambda decision: (
+                    decision.diagnostics.get("constraint_violation", math.inf),
+                    -decision.utility,
+                ),
+            )
         active = tuple(state.active_agents)
         switched = bool(active) and (best.mode != state.active_mode or set(best.agents) != set(active))
         selected = replace(best, switch_recommended=switched)
         alternatives = tuple(
             sorted(
-                (selected if decision is best else decision for decision in decisions),
-                key=lambda decision: decision.utility,
-                reverse=True,
+                (selected if decision is best else decision for decision in candidates),
+                key=lambda decision: (
+                    not decision.feasible,
+                    decision.diagnostics.get("constraint_violation", 0.0),
+                    -decision.utility,
+                ),
             )
         )
         return RoutingTrace(
@@ -434,8 +175,11 @@ class SAGERouter:
             alternatives=alternatives,
             eligible_agents=tuple(eligible),
             excluded_agents={
-                agent_id: reasons for agent_id, reasons in exclusions.items() if reasons
+                agent_id: reasons
+                for agent_id, reasons in hard_exclusions.items()
+                if reasons
             },
+            prefiltered_agents=prefiltered,
         )
 
     def record_outcome(
@@ -446,10 +190,25 @@ class SAGERouter:
         evidence = outcome if isinstance(outcome, ExecutionOutcome) else ExecutionOutcome(outcome)
         unknown_agents = set(evidence.agent_scores) - set(decision.agents)
         unknown_requirements = set(evidence.requirement_scores) - set(decision.assignments)
+        selected_pairs = {
+            tuple(sorted(pair)) for pair in combinations(sorted(decision.agents), 2)
+        }
+        normalized_pair_scores: dict[tuple[str, str], float] = {}
+        for pair, score in evidence.pair_scores.items():
+            left, right = sorted(pair)
+            normalized = (left, right)
+            if normalized in normalized_pair_scores:
+                raise ValueError(f"duplicate pair evidence: {normalized}")
+            normalized_pair_scores[normalized] = score
+        evidence_pairs = set(normalized_pair_scores)
         if unknown_agents:
             raise ValueError(f"outcome contains unselected agents: {sorted(unknown_agents)}")
         if unknown_requirements:
             raise ValueError(f"outcome contains unknown requirements: {sorted(unknown_requirements)}")
+        if evidence_pairs - selected_pairs:
+            raise ValueError(
+                f"outcome contains unselected agent pairs: {sorted(evidence_pairs - selected_pairs)}"
+            )
         overall = _clip(float(evidence.success))
         self.success_model.update(decision.model_features, overall)
 
@@ -479,17 +238,8 @@ class SAGERouter:
                 skill_weight = 1.0 if requirement in evidence.requirement_scores else weight
                 self._skill_belief(agent_id, requirement).update(skill_score, skill_weight)
 
-        for left, right in combinations(sorted(decision.agents), 2):
-            if evidence.agent_scores or evidence.requirement_scores:
-                individual_mean = (attributed_scores[left] + attributed_scores[right]) / 2.0
-                pair_credit = _clip(0.5 + overall - individual_mean)
-                pair_weight = 0.70
-            else:
-                # A team-only outcome is weak evidence: preserve backward compatibility
-                # while avoiding the old full-credit update for every pair.
-                pair_credit = overall
-                pair_weight = 0.25
-            self._synergy_belief(left, right).update(pair_credit, pair_weight)
+        for (left, right), pair_credit in normalized_pair_scores.items():
+            self._synergy_belief(left, right).update(pair_credit)
 
         quoted_cost = decision.cost
         if evidence.actual_cost is not None and quoted_cost > 0:
@@ -614,7 +364,8 @@ class SAGERouter:
                 or agents[0] == agents[1]
             ):
                 raise ValueError(f"synergy[{index}] must identify two registered agents")
-            pair = tuple(sorted((str(agents[0]), str(agents[1]))))
+            left, right = sorted((str(agents[0]), str(agents[1])))
+            pair = (left, right)
             if pair in synergy:
                 raise ValueError(f"duplicate synergy entry: {pair}")
             synergy[pair] = self._belief_from_payload(item, f"synergy[{index}]")
@@ -689,21 +440,30 @@ class SAGERouter:
         }
 
     def _risk_adjusted_cost(self, agent_id: str, bid: Bid) -> float:
-        return bid.quoted_cost * (1.0 + 0.20 * (1.0 - self.cost_fidelity[agent_id].mean))
+        if agent_id not in self._cost_cache:
+            self._cost_cache[agent_id] = bid.quoted_cost * (
+                1.0 + 0.20 * (1.0 - self.cost_fidelity[agent_id].mean)
+            )
+        return self._cost_cache[agent_id]
 
     def _risk_adjusted_latency(self, agent_id: str, bid: Bid) -> float:
-        agent = self.agents[agent_id]
-        quote = bid.promised_latency_ms * (1.0 + 0.20 * (1.0 - self.latency_fidelity[agent_id].mean))
-        return quote * (1.0 + 0.50 * agent.load) / max(agent.availability, 0.10)
+        if agent_id not in self._latency_cache:
+            agent = self.agents[agent_id]
+            quote = bid.promised_latency_ms * (
+                1.0 + 0.20 * (1.0 - self.latency_fidelity[agent_id].mean)
+            )
+            self._latency_cache[agent_id] = (
+                quote * (1.0 + 0.50 * agent.load) / max(agent.availability, 0.10)
+            )
+        return self._latency_cache[agent_id]
 
     def _eligible(self, agent: Agent, task: Task, bid: Bid) -> bool:
         return not self._exclusion_reasons(agent, task, bid, ExecutionState())
 
-    def _exclusion_reasons(
-        self,
+    @staticmethod
+    def _hard_exclusion_reasons(
         agent: Agent,
         task: Task,
-        bid: Bid,
         state: ExecutionState,
     ) -> tuple[str, ...]:
         reasons: list[str] = []
@@ -714,6 +474,16 @@ class SAGERouter:
         missing = sorted(task.required_permissions - agent.permissions)
         if missing:
             reasons.append(f"missing_permissions:{','.join(missing)}")
+        return tuple(reasons)
+
+    def _exclusion_reasons(
+        self,
+        agent: Agent,
+        task: Task,
+        bid: Bid,
+        state: ExecutionState,
+    ) -> tuple[str, ...]:
+        reasons = list(self._hard_exclusion_reasons(agent, task, state))
         adjusted_cost = self._risk_adjusted_cost(agent.agent_id, bid)
         if adjusted_cost > task.budget:
             reasons.append(f"cost:{adjusted_cost:.6g}>{task.budget:.6g}")
@@ -721,6 +491,61 @@ class SAGERouter:
         if adjusted_latency > task.deadline_ms:
             reasons.append(f"latency_ms:{adjusted_latency:.6g}>{task.deadline_ms:.6g}")
         return tuple(reasons)
+
+    def _prefilter_candidates(
+        self,
+        task: Task,
+        eligible: list[str],
+        bids: Mapping[str, Bid],
+        state: ExecutionState,
+    ) -> list[str]:
+        """Keep a bounded high-recall candidate set before combinatorial search.
+
+        Ranking deliberately uses declared skills and quoted resources only. It
+        is cheap, deterministic, and separate from the learned route objective.
+        Active agents and the incumbent are retained whenever they pass hard
+        authorization and availability checks.
+        """
+
+        if self.candidate_limit is None or len(eligible) <= self.candidate_limit:
+            return sorted(eligible)
+        requirements = self._remaining_requirements(task, state)
+        total_weight = sum(item.weight for item in requirements)
+
+        def relevance(agent_id: str) -> tuple[float, str]:
+            agent = self.agents[agent_id]
+            skill = sum(
+                item.weight * agent.skills.get(item.name, 0.0)
+                for item in requirements
+            ) / total_weight
+            cost_scale = task.budget if math.isfinite(task.budget) else task.value
+            latency_scale = (
+                task.deadline_ms if math.isfinite(task.deadline_ms) else 10_000.0
+            )
+            score = (
+                skill
+                - 0.04 * bids[agent_id].quoted_cost / max(cost_scale, 1e-9)
+                - 0.02 * bids[agent_id].promised_latency_ms / max(latency_scale, 1e-9)
+            )
+            return score, agent_id
+
+        required = set(state.active_agents) & set(eligible)
+        if self.incumbent_id in eligible:
+            required.add(self.incumbent_id)
+        def rank_key(agent_id: str) -> tuple[bool, float, str]:
+            individually_feasible = not self._exclusion_reasons(
+                self.agents[agent_id], task, bids[agent_id], state
+            )
+            score, name = relevance(agent_id)
+            return individually_feasible, score, name
+
+        ranked = sorted(
+            (agent_id for agent_id in eligible if agent_id not in required),
+            key=rank_key,
+            reverse=True,
+        )
+        remaining_slots = max(0, self.candidate_limit - len(required))
+        return sorted(required | set(ranked[:remaining_slots]))
 
     def _belief_value(self, key: tuple[str, ...], belief: BetaBelief) -> float:
         if not self.exploration:
@@ -733,7 +558,8 @@ class SAGERouter:
         return self.skill_reliability.setdefault((agent_id, requirement), BetaBelief())
 
     def _synergy_belief(self, left: str, right: str) -> BetaBelief:
-        pair = tuple(sorted((left, right)))
+        first, second = sorted((left, right))
+        pair = (first, second)
         return self.synergy.setdefault(pair, BetaBelief())
 
     def _contextual_trust(self, agent_id: str, requirement: str) -> tuple[float, float]:
@@ -746,11 +572,18 @@ class SAGERouter:
         return trust, uncertainty
 
     def _effective_skill(self, agent_id: str, requirement: str, bid: Bid) -> float:
-        agent = self.agents[agent_id]
-        declared = agent.skills.get(requirement, 0.0)
-        trust, _ = self._contextual_trust(agent_id, requirement)
-        calibrated_bid = trust * bid.confidence + (1.0 - trust) * 0.5
-        return declared * (0.65 + 0.35 * trust) * (0.70 + 0.30 * calibrated_bid)
+        key = (agent_id, requirement)
+        if key not in self._effective_skill_cache:
+            agent = self.agents[agent_id]
+            declared = agent.skills.get(requirement, 0.0)
+            trust, _ = self._contextual_trust(agent_id, requirement)
+            calibrated_bid = trust * bid.confidence + (1.0 - trust) * 0.5
+            self._effective_skill_cache[key] = (
+                declared
+                * (0.65 + 0.35 * trust)
+                * (0.70 + 0.30 * calibrated_bid)
+            )
+        return self._effective_skill_cache[key]
 
     def _remaining_requirements(self, task: Task, state: ExecutionState) -> tuple[Requirement, ...]:
         return tuple(item for item in task.requirements if item.name not in state.completed_requirements)
@@ -779,7 +612,7 @@ class SAGERouter:
             assigned_agent = (
                 assignments[requirement.name]
                 if assignments is not None
-                else max(skills, key=skills.get)
+                else max(skills, key=lambda agent_id: skills[agent_id])
             )
             assigned_skill = skills[assigned_agent]
             resolved_assignments[requirement.name] = assigned_agent
@@ -983,7 +816,9 @@ class SAGERouter:
         used_agents = set(team)
         coordinator = self.incumbent_id if self.incumbent_id in used_agents else min(used_agents)
 
-        adjacency = {agent_id: set() for agent_id in used_agents}
+        adjacency: dict[str, set[str]] = {
+            agent_id: set() for agent_id in used_agents
+        }
         for left, right in topology:
             adjacency[left].add(right)
             adjacency[right].add(left)
@@ -1062,7 +897,15 @@ class SAGERouter:
         feasible = [
             decision for decision in decisions if self._team_feasible(decision, task)
         ]
-        return max(feasible or decisions, key=lambda decision: decision.utility)
+        if feasible:
+            return max(feasible, key=lambda decision: decision.utility)
+        return min(
+            decisions,
+            key=lambda decision: (
+                decision.diagnostics.get("constraint_violation", math.inf),
+                -decision.utility,
+            ),
+        )
 
     def _evaluate_assignment(
         self,
@@ -1080,7 +923,7 @@ class SAGERouter:
         )
         synergy, redundancy = self._team_terms(team, requirements)
         latency, topology = self._schedule(team, assignments, task, bids, state)
-        cost = sum(self._risk_adjusted_cost(agent_id, bids[agent_id]) for agent_id in team)
+        cost = self._assignment_cost(team, assignments, task, bids, state)
         coordination_loss = task.coordination_overhead * len(topology) if mode is Mode.COLLABORATE else 0.0
         switch_loss = self._switch_loss(mode, team, task, state)
         handoff_loss = switch_loss if mode is Mode.HANDOFF else 0.0
@@ -1101,6 +944,7 @@ class SAGERouter:
         normalized_cost = cost / task.budget if math.isfinite(task.budget) else cost / task.value
         normalized_latency = latency / task.deadline_ms if math.isfinite(task.deadline_ms) else latency / 10_000
         exploration_bonus = self.weights.exploration * uncertainty if self.exploration else 0.0
+        violations, violation_score = self._constraint_violations(cost, latency, task)
         utility = (
             task.value * probability
             - self.weights.cost * normalized_cost
@@ -1124,6 +968,8 @@ class SAGERouter:
             explanation=explanation,
             assignments=assignments,
             topology=topology,
+            feasible=not violations,
+            constraint_violations=violations,
             diagnostics={
                 "bottleneck": bottleneck,
                 "synergy": synergy,
@@ -1135,13 +981,57 @@ class SAGERouter:
                 "exploration_bonus": exploration_bonus,
                 "assignment_search_candidates": float(assignment_candidate_count),
                 "model_updates": float(self.success_model.updates),
+                "constraint_violation": violation_score,
             },
             model_features=features,
         )
 
+    def _assignment_cost(
+        self,
+        team: tuple[str, ...],
+        assignments: Mapping[str, str],
+        task: Task,
+        bids: Mapping[str, Bid],
+        state: ExecutionState,
+    ) -> float:
+        """Charge a small activation fee plus work-proportional execution cost."""
+
+        requirements = self._remaining_requirements(task, state)
+        total_weight = sum(item.weight for item in requirements)
+        assigned_weight = {agent_id: 0.0 for agent_id in team}
+        for item in requirements:
+            assigned_weight[assignments[item.name]] += item.weight
+        return sum(
+            self._risk_adjusted_cost(agent_id, bids[agent_id])
+            * (
+                self.cost_activation_fraction
+                + (1.0 - self.cost_activation_fraction)
+                * assigned_weight[agent_id]
+                / total_weight
+            )
+            for agent_id in team
+        )
+
+    @staticmethod
+    def _constraint_violations(
+        cost: float,
+        latency_ms: float,
+        task: Task,
+    ) -> tuple[tuple[str, ...], float]:
+        violations: list[str] = []
+        score = 0.0
+        if cost > task.budget:
+            violations.append(f"budget:{cost:.6g}>{task.budget:.6g}")
+            score += cost / task.budget - 1.0
+        if latency_ms > task.deadline_ms:
+            violations.append(f"deadline_ms:{latency_ms:.6g}>{task.deadline_ms:.6g}")
+            score += latency_ms / task.deadline_ms - 1.0
+        return tuple(violations), score
+
     @staticmethod
     def _team_feasible(decision: RouteDecision, task: Task) -> bool:
-        return decision.cost <= task.budget and decision.latency_ms <= task.deadline_ms
+        del task
+        return decision.feasible
 
     def _beam_collaboration_decisions(
         self,
@@ -1160,9 +1050,6 @@ class SAGERouter:
                     if agent_id in team:
                         continue
                     candidate = team + (agent_id,)
-                    quoted_cost = sum(self._risk_adjusted_cost(item, bids[item]) for item in candidate)
-                    if quoted_cost > task.budget:
-                        continue
                     key = frozenset(candidate)
                     if key in expanded:
                         continue

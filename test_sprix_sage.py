@@ -192,7 +192,7 @@ class SAGERouterTests(unittest.TestCase):
         self.assertTrue(math.isinf(task.budget))
         self.assertTrue(math.isinf(task.deadline_ms))
 
-    def test_outcomes_update_reliability_and_pair_synergy(self) -> None:
+    def test_pair_synergy_requires_explicit_pair_evidence(self) -> None:
         agents = [
             Agent("current", {"planning": 0.9, "coding": 0.2}, 0.02, 300),
             Agent("coder", {"planning": 0.2, "coding": 0.9}, 0.02, 350),
@@ -211,7 +211,112 @@ class SAGERouterTests(unittest.TestCase):
         self.assertGreater(router.reliability["current"].mean, before)
         if len(decision.agents) > 1:
             pair = tuple(sorted(decision.agents))
+            self.assertEqual(router.synergy[pair].mean, 0.5)
+            router.record_outcome(
+                decision,
+                ExecutionOutcome(True, pair_scores={pair: 0.8}),
+            )
             self.assertGreater(router.synergy[pair].mean, 0.5)
+
+            with self.assertRaisesRegex(ValueError, "duplicate pair evidence"):
+                router.record_outcome(
+                    decision,
+                    ExecutionOutcome(
+                        True,
+                        pair_scores={pair: 0.8, (pair[1], pair[0]): 0.7},
+                    ),
+                )
+
+    def test_workload_sensitive_cost_does_not_charge_full_price_per_agent(self) -> None:
+        agents = [
+            Agent("current", {"large": 0.99, "small": 0.05}, 1.0, 300),
+            Agent("peer", {"large": 0.05, "small": 0.99}, 1.0, 300),
+        ]
+        task = Task(
+            "workload-cost",
+            (Requirement("large", 0.9), Requirement("small", 0.1)),
+            value=10.0,
+            budget=3.0,
+            deadline_ms=2000,
+            coordination_overhead=0.0,
+        )
+
+        decision = SAGERouter(
+            agents,
+            "current",
+            max_collaborators=1,
+            cost_activation_fraction=0.10,
+        ).route(task)
+
+        self.assertEqual(decision.mode, Mode.COLLABORATE)
+        self.assertLess(decision.cost, 2.0)
+        self.assertGreater(decision.cost, 1.0)
+
+    def test_infeasible_route_degrades_with_explicit_violation(self) -> None:
+        agents = [Agent("current", {"code": 0.9}, 0.5, 1500)]
+        task = Task(
+            "degraded",
+            (Requirement("code"),),
+            budget=0.1,
+            deadline_ms=500,
+        )
+
+        decision = SAGERouter(agents, "current").route(task)
+
+        self.assertFalse(decision.feasible)
+        self.assertEqual(len(decision.constraint_violations), 2)
+        self.assertTrue(any(item.startswith("budget:") for item in decision.constraint_violations))
+        self.assertTrue(any(item.startswith("deadline_ms:") for item in decision.constraint_violations))
+
+        with self.assertRaisesRegex(RuntimeError, "no feasible route"):
+            SAGERouter(agents, "current", allow_degraded=False).route(task)
+
+    def test_degraded_route_never_bypasses_permissions(self) -> None:
+        agents = [Agent("current", {"finance": 0.9}, 0.01, 100)]
+        task = Task(
+            "permission",
+            (Requirement("finance"),),
+            required_permissions=frozenset({"ledger:write"}),
+        )
+
+        with self.assertRaisesRegex(RuntimeError, "authorized and available"):
+            SAGERouter(agents, "current").route(task)
+
+    def test_candidate_prefilter_is_bounded_and_keeps_incumbent(self) -> None:
+        agents = [
+            Agent(f"agent-{index}", {"code": index / 20.0}, 0.01, 100)
+            for index in range(20)
+        ]
+        task = Task("prefilter", (Requirement("code"),), budget=1.0, deadline_ms=1000)
+
+        trace = SAGERouter(
+            agents,
+            "agent-0",
+            candidate_limit=6,
+            max_collaborators=1,
+        ).route_with_trace(task)
+
+        self.assertEqual(len(trace.eligible_agents), 6)
+        self.assertIn("agent-0", trace.eligible_agents)
+        self.assertEqual(len(trace.prefiltered_agents), 14)
+
+    def test_candidate_prefilter_prioritizes_individually_feasible_peer(self) -> None:
+        agents = [
+            Agent("current", {"code": 0.9}, 1.0, 100),
+            Agent("expensive", {"code": 1.0}, 1.0, 100),
+            Agent("affordable", {"code": 0.5}, 0.01, 100),
+        ]
+        task = Task("prefilter-feasible", (Requirement("code"),), budget=0.1, deadline_ms=1000)
+
+        trace = SAGERouter(
+            agents,
+            "current",
+            candidate_limit=2,
+            max_collaborators=0,
+        ).route_with_trace(task)
+
+        self.assertIn("affordable", trace.eligible_agents)
+        self.assertTrue(trace.selected.feasible)
 
     def test_learned_state_round_trips_through_json(self) -> None:
         agents = [

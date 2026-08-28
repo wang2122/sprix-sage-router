@@ -5,7 +5,6 @@ import json
 from sprix_a2a import execution_plan, profile_from_agent_card
 from sprix_sage import Requirement, SAGERouter, Task
 
-
 cards = [
     {
         "name": "Planning agent",

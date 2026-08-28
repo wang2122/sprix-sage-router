@@ -1,6 +1,5 @@
 from sprix_sage import Agent, Bid, ExecutionOutcome, Requirement, SAGERouter, Task
 
-
 agents = [
     Agent(
         "incumbent-planner",
