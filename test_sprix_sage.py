@@ -151,26 +151,39 @@ class SAGERouterTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "non-negative"):
                     Bid("peer", "code", quoted_cost, promised_latency_ms)
 
-    def test_agent_rejects_nan_cost_and_latency(self) -> None:
-        invalid = ((math.nan, 300), (0.02, math.nan))
+    def test_agent_rejects_non_finite_cost_and_latency(self) -> None:
+        invalid = (
+            (math.nan, 300),
+            (math.inf, 300),
+            (-math.inf, 300),
+            (0.02, math.nan),
+            (0.02, math.inf),
+            (0.02, -math.inf),
+        )
 
         for cost, latency_ms in invalid:
             with self.subTest(cost=cost, latency_ms=latency_ms):
                 with self.assertRaisesRegex(ValueError, "finite"):
                     Agent("peer", {"code": 0.9}, cost, latency_ms)
 
-    def test_requirement_rejects_nan_weight(self) -> None:
-        with self.assertRaisesRegex(ValueError, "finite"):
-            Requirement("code", weight=math.nan)
-
-    def test_task_rejects_nan_value_budget_and_deadline(self) -> None:
-        for field_name, value in (
-            ("value", math.nan),
-            ("budget", math.nan),
-            ("deadline_ms", math.nan),
-        ):
-            with self.subTest(field=field_name):
+    def test_requirement_rejects_non_finite_weight(self) -> None:
+        for weight in (math.nan, math.inf, -math.inf):
+            with self.subTest(weight=weight):
                 with self.assertRaisesRegex(ValueError, "finite"):
+                    Requirement("code", weight=weight)
+
+    def test_task_rejects_invalid_value_budget_and_deadline(self) -> None:
+        for field_name, value, message in (
+            ("value", math.nan, "finite"),
+            ("value", math.inf, "finite"),
+            ("value", -math.inf, "finite"),
+            ("budget", math.nan, "infinity"),
+            ("budget", -math.inf, "infinity"),
+            ("deadline_ms", math.nan, "infinity"),
+            ("deadline_ms", -math.inf, "infinity"),
+        ):
+            with self.subTest(field=field_name, value=value):
+                with self.assertRaisesRegex(ValueError, message):
                     Task("t", (Requirement("code"),), **{field_name: value})
 
     def test_task_keeps_infinite_budget_and_deadline_defaults(self) -> None:
