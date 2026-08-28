@@ -151,6 +151,34 @@ class SAGERouterTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "non-negative"):
                     Bid("peer", "code", quoted_cost, promised_latency_ms)
 
+    def test_agent_rejects_nan_cost_and_latency(self) -> None:
+        invalid = ((math.nan, 300), (0.02, math.nan))
+
+        for cost, latency_ms in invalid:
+            with self.subTest(cost=cost, latency_ms=latency_ms):
+                with self.assertRaisesRegex(ValueError, "finite"):
+                    Agent("peer", {"code": 0.9}, cost, latency_ms)
+
+    def test_requirement_rejects_nan_weight(self) -> None:
+        with self.assertRaisesRegex(ValueError, "finite"):
+            Requirement("code", weight=math.nan)
+
+    def test_task_rejects_nan_value_budget_and_deadline(self) -> None:
+        for field_name, value in (
+            ("value", math.nan),
+            ("budget", math.nan),
+            ("deadline_ms", math.nan),
+        ):
+            with self.subTest(field=field_name):
+                with self.assertRaisesRegex(ValueError, "finite"):
+                    Task("t", (Requirement("code"),), **{field_name: value})
+
+    def test_task_keeps_infinite_budget_and_deadline_defaults(self) -> None:
+        task = Task("t", (Requirement("code"),))
+
+        self.assertTrue(math.isinf(task.budget))
+        self.assertTrue(math.isinf(task.deadline_ms))
+
     def test_outcomes_update_reliability_and_pair_synergy(self) -> None:
         agents = [
             Agent("current", {"planning": 0.9, "coding": 0.2}, 0.02, 300),
