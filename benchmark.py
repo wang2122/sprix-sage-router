@@ -1,82 +1,94 @@
-"""Deterministic external simulator for comparing SAGE with routing baselines.
+"""Deterministic synthetic benchmark with structural and learning ablations.
 
-Unlike the original smoke test, the evaluator does not use SAGE's noisy-OR
-coverage or predicted success probability as ground truth.  Advertised skills
-are imperfect, quality is nonlinear, pair effects are hidden, and realized cost
-and latency differ from bids.
+The held-out evaluator lives in ``benchmark_evaluator.py`` and deliberately
+uses different quality, compatibility, cost, latency, and handoff equations
+from SAGE. Greedy and random team baselines prevent the comparison from
+crediting SAGE merely for being the only policy allowed to collaborate.
 """
 
 from __future__ import annotations
 
 import argparse
+import json
+import random
 from collections import Counter
 from dataclasses import dataclass
-from itertools import combinations
-import json
-import math
 from pathlib import Path
-import random
 from statistics import mean, pstdev
 from typing import Mapping
 
+from benchmark_evaluator import ExternalResult, evaluate_plan
+from sprix_learning import OnlineSuccessModel
 from sprix_sage import Agent, ExecutionOutcome, Mode, Requirement, RouteDecision, SAGERouter, Task
-
 
 SKILLS = ("code", "research", "vision", "security", "writing")
 DEFAULT_SEEDS = (3, 7, 11, 19, 23)
-
-
-def sigmoid(value: float) -> float:
-    return 1.0 / (1.0 + math.exp(-value))
+STRATEGIES = (
+    "incumbent",
+    "skill_solo",
+    "oracle_solo",
+    "random_team",
+    "greedy_team",
+    "static_sage",
+    "learned_no_explore",
+    "learned_explore",
+    "learned_random_init",
+)
+LEARNED_STRATEGIES = (
+    "learned_no_explore",
+    "learned_explore",
+    "learned_random_init",
+)
+METRICS = ("quality", "utility", "cost", "latency", "misses")
 
 
 @dataclass(frozen=True)
-class HiddenAgent:
-    skills: Mapping[str, float]
-    cost_multiplier: float
-    latency_multiplier: float
+class Plan:
+    mode: Mode
+    agents: tuple[str, ...]
+    assignments: Mapping[str, str]
 
 
-@dataclass(frozen=True)
-class ExternalResult:
-    quality: float
-    utility: float
-    cost: float
-    latency_ms: float
-    requirement_scores: Mapping[str, float]
-    agent_scores: Mapping[str, float]
+def make_agents() -> list[Agent]:
+    """Return public Agent Card-like values visible to every routing policy."""
 
-
-def make_agents() -> tuple[list[Agent], dict[str, HiddenAgent]]:
-    agents = [
-        Agent("generalist", {"code": 0.72, "research": 0.74, "vision": 0.58, "security": 0.66, "writing": 0.80}, 0.05, 900, frozenset({"public", "secure"})),
-        Agent("coder", {"code": 0.97, "research": 0.43, "vision": 0.31, "security": 0.60, "writing": 0.45}, 0.09, 1150, frozenset({"public"})),
-        Agent("researcher", {"code": 0.42, "research": 0.97, "vision": 0.51, "security": 0.38, "writing": 0.83}, 0.08, 1350, frozenset({"public"})),
-        Agent("vision", {"code": 0.38, "research": 0.58, "vision": 0.97, "security": 0.35, "writing": 0.47}, 0.10, 1100, frozenset({"public"})),
-        Agent("reviewer", {"code": 0.62, "research": 0.76, "vision": 0.40, "security": 0.94, "writing": 0.91}, 0.06, 800, frozenset({"public", "secure"})),
+    return [
+        Agent(
+            "generalist",
+            {"code": 0.72, "research": 0.74, "vision": 0.58, "security": 0.66, "writing": 0.80},
+            0.05,
+            900,
+            frozenset({"public", "secure"}),
+        ),
+        Agent(
+            "coder",
+            {"code": 0.97, "research": 0.43, "vision": 0.31, "security": 0.60, "writing": 0.45},
+            0.09,
+            1150,
+            frozenset({"public"}),
+        ),
+        Agent(
+            "researcher",
+            {"code": 0.42, "research": 0.97, "vision": 0.51, "security": 0.38, "writing": 0.83},
+            0.08,
+            1350,
+            frozenset({"public"}),
+        ),
+        Agent(
+            "vision",
+            {"code": 0.38, "research": 0.58, "vision": 0.97, "security": 0.35, "writing": 0.47},
+            0.10,
+            1100,
+            frozenset({"public"}),
+        ),
+        Agent(
+            "reviewer",
+            {"code": 0.62, "research": 0.76, "vision": 0.40, "security": 0.94, "writing": 0.91},
+            0.06,
+            800,
+            frozenset({"public", "secure"}),
+        ),
     ]
-    hidden = {
-        "generalist": HiddenAgent({"code": 0.68, "research": 0.70, "vision": 0.55, "security": 0.61, "writing": 0.82}, 1.02, 1.04),
-        "coder": HiddenAgent({"code": 0.94, "research": 0.36, "vision": 0.28, "security": 0.51, "writing": 0.42}, 1.18, 1.12),
-        "researcher": HiddenAgent({"code": 0.38, "research": 0.93, "vision": 0.48, "security": 0.34, "writing": 0.88}, 0.97, 1.20),
-        "vision": HiddenAgent({"code": 0.33, "research": 0.51, "vision": 0.91, "security": 0.31, "writing": 0.44}, 1.08, 0.96),
-        "reviewer": HiddenAgent({"code": 0.57, "research": 0.72, "vision": 0.36, "security": 0.90, "writing": 0.95}, 0.94, 0.90),
-    }
-    return agents, hidden
-
-
-HIDDEN_SYNERGY = {
-    frozenset(("generalist", "coder")): 0.045,
-    frozenset(("generalist", "researcher")): 0.030,
-    frozenset(("generalist", "vision")): 0.020,
-    frozenset(("generalist", "reviewer")): 0.055,
-    frozenset(("coder", "reviewer")): 0.035,
-    frozenset(("researcher", "reviewer")): 0.050,
-    frozenset(("coder", "researcher")): -0.025,
-    frozenset(("coder", "vision")): 0.015,
-    frozenset(("researcher", "vision")): 0.025,
-    frozenset(("vision", "reviewer")): -0.015,
-}
 
 
 def generate_task(rng: random.Random, index: int) -> tuple[Task, float]:
@@ -106,260 +118,433 @@ def generate_task(rng: random.Random, index: int) -> tuple[Task, float]:
         coordination_overhead=rng.uniform(0.02, 0.12),
         context_transferability=rng.uniform(0.35, 0.90),
     )
-    difficulty = rng.uniform(0.15, 0.85)
-    return task, difficulty
+    return task, rng.uniform(0.15, 0.85)
 
 
 def assign_single(task: Task, agent_id: str) -> dict[str, str]:
     return {requirement.name: agent_id for requirement in task.requirements}
 
 
-def external_evaluate(
+def eligible_agents(task: Task, agents: list[Agent]) -> list[Agent]:
+    return [
+        agent
+        for agent in agents
+        if agent.availability > 0
+        and task.required_permissions.issubset(agent.permissions)
+    ]
+
+
+def plan_mode(agent_ids: tuple[str, ...]) -> Mode:
+    if agent_ids == ("generalist",):
+        return Mode.SELF
+    if len(agent_ids) == 1:
+        return Mode.HANDOFF
+    return Mode.COLLABORATE
+
+
+def visible_plan_resources(
     task: Task,
-    difficulty: float,
-    mode: Mode,
-    agents: tuple[str, ...],
+    team: tuple[str, ...],
     assignments: Mapping[str, str],
-    hidden: Mapping[str, HiddenAgent],
-    advertised: Mapping[str, Agent],
-) -> ExternalResult:
-    requirement_scores: dict[str, float] = {}
-    for requirement in task.requirements:
-        agent_id = assignments[requirement.name]
-        skill = hidden[agent_id].skills.get(requirement.name, 0.0)
-        threshold = 0.42 + 0.28 * difficulty + 0.12 * requirement.minimum
-        requirement_scores[requirement.name] = sigmoid(7.0 * (skill - threshold))
+    agent_map: Mapping[str, Agent],
+) -> tuple[float, float]:
+    """Cheap quote-only model available to non-SAGE baselines."""
 
-    weighted_quality = sum(
-        requirement.weight * requirement_scores[requirement.name]
-        for requirement in task.requirements
-    )
-    bottleneck = min(requirement_scores.values())
-    used_agents = tuple(sorted(set(assignments.values())))
-    pair_effect = sum(
-        HIDDEN_SYNERGY.get(frozenset(pair), -0.01)
-        for pair in combinations(used_agents, 2)
-    )
-    coordination_penalty = 0.025 * max(0, len(used_agents) - 1) ** 2
-    handoff_penalty = 0.0
-    if mode is Mode.HANDOFF:
-        handoff_penalty = task.progress * (1.0 - task.context_transferability) * task.handoff_friction
-    quality = max(
-        0.0,
-        min(1.0, 0.68 * weighted_quality + 0.32 * bottleneck + pair_effect - coordination_penalty - handoff_penalty),
-    )
-
-    actual_cost = sum(advertised[agent_id].cost * hidden[agent_id].cost_multiplier for agent_id in agents)
-    total_weight = sum(requirement.weight for requirement in task.requirements)
+    total_weight = sum(item.weight for item in task.requirements)
+    workload = {agent_id: 0.0 for agent_id in team}
     finish: dict[str, float] = {}
-    agent_ready = {agent_id: 0.0 for agent_id in used_agents}
+    agent_ready = {agent_id: 0.0 for agent_id in team}
     remaining = {item.name: item for item in task.requirements}
+    for item in task.requirements:
+        workload[assignments[item.name]] += item.weight / total_weight
+    cost = sum(
+        agent_map[agent_id].cost * (0.15 + 0.85 * workload[agent_id])
+        for agent_id in team
+    )
     while remaining:
         ready = sorted(
-            (item for item in remaining.values() if set(item.depends_on).issubset(finish)),
+            (
+                item
+                for item in remaining.values()
+                if set(item.depends_on).issubset(finish)
+            ),
             key=lambda item: item.name,
         )
-        for requirement in ready:
-            agent_id = assignments[requirement.name]
-            dependency_ready = max((finish[name] for name in requirement.depends_on), default=0.0)
-            start = max(dependency_ready, agent_ready[agent_id])
-            duration = (
-                advertised[agent_id].latency_ms
-                * hidden[agent_id].latency_multiplier
-                * requirement.weight
-                / total_weight
+        for item in ready:
+            agent_id = assignments[item.name]
+            dependency_ready = max(
+                (finish[name] for name in item.depends_on), default=0.0
             )
-            finish[requirement.name] = start + duration
-            agent_ready[agent_id] = finish[requirement.name]
-            remaining.pop(requirement.name)
-    actual_latency = max(finish.values()) * (1.0 + task.coordination_overhead * max(0, len(used_agents) - 1))
-
-    cost_ratio = actual_cost / task.budget
-    latency_ratio = actual_latency / task.deadline_ms
-    deadline_penalty = max(0.0, latency_ratio - 1.0)
-    utility = quality - 0.22 * cost_ratio - 0.10 * latency_ratio - 0.40 * deadline_penalty
-
-    per_agent: dict[str, list[float]] = {agent_id: [] for agent_id in agents}
-    for requirement_name, agent_id in assignments.items():
-        per_agent[agent_id].append(requirement_scores[requirement_name])
-    agent_scores = {
-        agent_id: sum(scores) / len(scores) if scores else 0.5
-        for agent_id, scores in per_agent.items()
+            start = max(dependency_ready, agent_ready[agent_id])
+            finish[item.name] = (
+                start + agent_map[agent_id].latency_ms * item.weight / total_weight
+            )
+            agent_ready[agent_id] = finish[item.name]
+            remaining.pop(item.name)
+    topology = {
+        (assignments[dependency], assignments[item.name])
+        for item in task.requirements
+        for dependency in item.depends_on
+        if assignments[dependency] != assignments[item.name]
     }
-    return ExternalResult(quality, utility, actual_cost, actual_latency, requirement_scores, agent_scores)
-
-
-def eligible_solo(task: Task, agent: Agent) -> bool:
-    return (
-        task.required_permissions.issubset(agent.permissions)
-        and agent.cost <= task.budget
-        and agent.latency_ms <= task.deadline_ms
+    latency = max(finish.values()) * (
+        1.0 + task.coordination_overhead * len(topology)
     )
+    return cost, latency
+
+
+def visible_feasible(
+    task: Task,
+    team: tuple[str, ...],
+    assignments: Mapping[str, str],
+    agent_map: Mapping[str, Agent],
+) -> bool:
+    cost, latency = visible_plan_resources(task, team, assignments, agent_map)
+    return cost <= task.budget and latency <= task.deadline_ms
+
+
+def greedy_assign(
+    task: Task,
+    team: tuple[str, ...],
+    agent_map: Mapping[str, Agent],
+) -> dict[str, str]:
+    return {
+        item.name: max(
+            team,
+            key=lambda agent_id: agent_map[agent_id].skills.get(item.name, 0.0),
+        )
+        for item in task.requirements
+    }
+
+
+def visible_score(
+    task: Task,
+    team: tuple[str, ...],
+    assignments: Mapping[str, str],
+    agent_map: Mapping[str, Agent],
+) -> float:
+    total_weight = sum(item.weight for item in task.requirements)
+    capability = sum(
+        item.weight * agent_map[assignments[item.name]].skills.get(item.name, 0.0)
+        for item in task.requirements
+    ) / total_weight
+    cost, latency = visible_plan_resources(task, team, assignments, agent_map)
+    return capability - 0.22 * cost / task.budget - 0.10 * latency / task.deadline_ms
+
+
+def greedy_team_plan(
+    task: Task,
+    agents: list[Agent],
+    agent_map: Mapping[str, Agent],
+    max_team_size: int = 3,
+) -> Plan:
+    allowed = {agent.agent_id for agent in eligible_agents(task, agents)}
+    team: tuple[str, ...] = (
+        ("generalist",) if "generalist" in allowed else (min(allowed),)
+    )
+    assignments = greedy_assign(task, team, agent_map)
+    score = visible_score(task, team, assignments, agent_map)
+    while len(team) < max_team_size:
+        options: list[tuple[float, tuple[str, ...], dict[str, str]]] = []
+        for agent_id in sorted(allowed - set(team)):
+            candidate_team = team + (agent_id,)
+            candidate_assignments = greedy_assign(task, candidate_team, agent_map)
+            if visible_feasible(task, candidate_team, candidate_assignments, agent_map):
+                options.append(
+                    (
+                        visible_score(task, candidate_team, candidate_assignments, agent_map),
+                        candidate_team,
+                        candidate_assignments,
+                    )
+                )
+        if not options:
+            break
+        best_score, best_team, best_assignments = max(options, key=lambda item: item[0])
+        if best_score <= score + 1e-12:
+            break
+        score, team, assignments = best_score, best_team, best_assignments
+    used = tuple(sorted(set(assignments.values()), key=team.index))
+    return Plan(plan_mode(used), used, assignments)
+
+
+def random_team_plan(
+    task: Task,
+    agents: list[Agent],
+    agent_map: Mapping[str, Agent],
+    rng: random.Random,
+    max_team_size: int = 3,
+) -> Plan:
+    allowed = sorted(agent.agent_id for agent in eligible_agents(task, agents))
+    incumbent = "generalist" if "generalist" in allowed else allowed[0]
+    peers = [agent_id for agent_id in allowed if agent_id != incumbent]
+    attempts: list[Plan] = []
+    for _ in range(24):
+        team_size = rng.randint(1, min(max_team_size, len(allowed)))
+        team = (incumbent, *rng.sample(peers, min(team_size - 1, len(peers))))
+        assignments = {
+            item.name: team[rng.randrange(len(team))] for item in task.requirements
+        }
+        used = tuple(agent_id for agent_id in team if agent_id in assignments.values())
+        plan = Plan(plan_mode(used), used, assignments)
+        if visible_feasible(task, used, assignments, agent_map):
+            return plan
+        attempts.append(plan)
+    fallback = Plan(Mode.SELF, (incumbent,), assign_single(task, incumbent))
+    feasible_attempts = [
+        plan
+        for plan in attempts
+        if visible_feasible(task, plan.agents, plan.assignments, agent_map)
+    ]
+    return rng.choice(feasible_attempts) if feasible_attempts else fallback
+
+
+def decision_plan(decision: RouteDecision) -> Plan:
+    return Plan(decision.mode, decision.agents, decision.assignments)
+
+
+def evaluate(
+    task: Task,
+    difficulty: float,
+    plan: Plan,
+    agent_map: Mapping[str, Agent],
+) -> ExternalResult:
+    return evaluate_plan(
+        task,
+        difficulty,
+        plan.mode,
+        plan.agents,
+        plan.assignments,
+        agent_map,
+    )
+
+
+def _empty_metrics() -> dict[str, float]:
+    return {metric: 0.0 for metric in METRICS}
+
+
+def _accumulate(row: dict[str, float], result: ExternalResult, task: Task) -> None:
+    row["quality"] += result.quality
+    row["utility"] += result.utility
+    row["cost"] += result.cost / task.budget
+    row["latency"] += result.latency_ms / task.deadline_ms
+    row["misses"] += float(result.latency_ms > task.deadline_ms)
+
+
+def _average(row: Mapping[str, float], count: int) -> dict[str, float]:
+    result = {metric: row[metric] / count for metric in METRICS}
+    result["misses"] *= 100.0
+    return result
 
 
 def simulate(
     seed: int = 11,
     tasks: int = 500,
-) -> tuple[dict[str, dict[str, float]], Counter[str], int]:
+) -> tuple[
+    dict[str, dict[str, float]],
+    dict[str, Counter[str]],
+    dict[str, int],
+    dict[str, dict[str, dict[str, float]]],
+]:
     rng = random.Random(seed)
-    agents, hidden = make_agents()
+    baseline_rng = random.Random(seed + 100_003)
+    agents = make_agents()
     agent_map = {agent.agent_id: agent for agent in agents}
-    learned = SAGERouter(agents, "generalist", max_collaborators=3, beam_width=10, exploration=True, seed=seed)
-    static = SAGERouter(agents, "generalist", max_collaborators=3, beam_width=10, exploration=False, seed=seed)
-
-    metrics = {
-        name: {"quality": 0.0, "utility": 0.0, "cost": 0.0, "latency": 0.0, "misses": 0.0}
-        for name in ("self", "skill_solo", "oracle_solo", "static_sage", "learned_sage")
+    routers = {
+        "static_sage": SAGERouter(
+            agents,
+            "generalist",
+            max_collaborators=3,
+            beam_width=10,
+            exploration=False,
+            seed=seed,
+        ),
+        "learned_no_explore": SAGERouter(
+            agents,
+            "generalist",
+            max_collaborators=3,
+            beam_width=10,
+            exploration=False,
+            seed=seed,
+        ),
+        "learned_explore": SAGERouter(
+            agents,
+            "generalist",
+            max_collaborators=3,
+            beam_width=10,
+            exploration=True,
+            seed=seed,
+        ),
+        "learned_random_init": SAGERouter(
+            agents,
+            "generalist",
+            max_collaborators=3,
+            beam_width=10,
+            exploration=False,
+            seed=seed,
+            success_model=OnlineSuccessModel.randomized(seed),
+        ),
     }
-    modes: Counter[str] = Counter()
-
-    def accumulate(name: str, result: ExternalResult, task: Task) -> None:
-        metrics[name]["quality"] += result.quality
-        metrics[name]["utility"] += result.utility
-        metrics[name]["cost"] += result.cost / task.budget
-        metrics[name]["latency"] += result.latency_ms / task.deadline_ms
-        metrics[name]["misses"] += float(result.latency_ms > task.deadline_ms)
+    metrics = {name: _empty_metrics() for name in STRATEGIES}
+    route_mix: dict[str, Counter[str]] = {name: Counter() for name in routers}
+    window = min(100, max(1, tasks // 2))
+    curve_sums = {
+        name: {"first": _empty_metrics(), "last": _empty_metrics()}
+        for name in LEARNED_STRATEGIES
+    }
 
     for index in range(tasks):
         task, difficulty = generate_task(rng, index)
-        solo_agents = [agent for agent in agents if eligible_solo(task, agent)]
+        allowed = eligible_agents(task, agents)
 
-        self_result = external_evaluate(
-            task, difficulty, Mode.SELF, ("generalist",), assign_single(task, "generalist"), hidden, agent_map
-        )
-        accumulate("self", self_result, task)
-
+        plans: dict[str, Plan] = {
+            "incumbent": Plan(Mode.SELF, ("generalist",), assign_single(task, "generalist")),
+            "random_team": random_team_plan(task, agents, agent_map, baseline_rng),
+            "greedy_team": greedy_team_plan(task, agents, agent_map),
+        }
         skill_agent = max(
-            solo_agents,
+            allowed,
             key=lambda agent: (
-                sum(item.weight * agent.skills.get(item.name, 0.0) for item in task.requirements)
+                sum(
+                    item.weight * agent.skills.get(item.name, 0.0)
+                    for item in task.requirements
+                )
                 - 0.12 * agent.cost / task.budget
                 - 0.05 * agent.latency_ms / task.deadline_ms
             ),
         )
-        skill_result = external_evaluate(
-            task,
-            difficulty,
-            Mode.SELF if skill_agent.agent_id == "generalist" else Mode.HANDOFF,
+        plans["skill_solo"] = Plan(
+            plan_mode((skill_agent.agent_id,)),
             (skill_agent.agent_id,),
             assign_single(task, skill_agent.agent_id),
-            hidden,
-            agent_map,
         )
-        accumulate("skill_solo", skill_result, task)
 
-        oracle_candidates = []
-        for agent in solo_agents:
-            mode = Mode.SELF if agent.agent_id == "generalist" else Mode.HANDOFF
-            result = external_evaluate(
-                task, difficulty, mode, (agent.agent_id,), assign_single(task, agent.agent_id), hidden, agent_map
+        oracle_candidates: list[tuple[ExternalResult, Plan]] = []
+        for agent in allowed:
+            plan = Plan(
+                plan_mode((agent.agent_id,)),
+                (agent.agent_id,),
+                assign_single(task, agent.agent_id),
             )
-            oracle_candidates.append(result)
+            oracle_candidates.append((evaluate(task, difficulty, plan, agent_map), plan))
         oracle_feasible = [
-            result
-            for result in oracle_candidates
-            if result.cost <= task.budget and result.latency_ms <= task.deadline_ms
+            candidate
+            for candidate in oracle_candidates
+            if candidate[0].cost <= task.budget
+            and candidate[0].latency_ms <= task.deadline_ms
         ]
-        accumulate("oracle_solo", max(oracle_feasible, key=lambda result: result.utility), task)
+        plans["oracle_solo"] = max(
+            oracle_feasible or oracle_candidates,
+            key=lambda candidate: candidate[0].utility,
+        )[1]
 
-        static_decision = static.route(task)
-        static_result = external_evaluate(
-            task,
-            difficulty,
-            static_decision.mode,
-            static_decision.agents,
-            static_decision.assignments,
-            hidden,
-            agent_map,
-        )
-        accumulate("static_sage", static_result, task)
+        decisions = {name: router.route(task) for name, router in routers.items()}
+        plans.update({name: decision_plan(decision) for name, decision in decisions.items()})
 
-        learned_decision = learned.route(task)
-        learned_result = external_evaluate(
-            task,
-            difficulty,
-            learned_decision.mode,
-            learned_decision.agents,
-            learned_decision.assignments,
-            hidden,
-            agent_map,
-        )
-        accumulate("learned_sage", learned_result, task)
-        modes[learned_decision.mode.value] += 1
-        learned.record_outcome(
-            learned_decision,
-            ExecutionOutcome(
-                learned_result.quality,
-                agent_scores=learned_result.agent_scores,
-                requirement_scores=learned_result.requirement_scores,
-                actual_cost=learned_result.cost,
-                actual_latency_ms=learned_result.latency_ms,
-            ),
-        )
-
-    averages = {
-        name: {
-            "quality": row["quality"] / tasks,
-            "utility": row["utility"] / tasks,
-            "cost": row["cost"] / tasks,
-            "latency": row["latency"] / tasks,
-            "misses": 100.0 * row["misses"] / tasks,
+        results = {
+            name: evaluate(task, difficulty, plan, agent_map)
+            for name, plan in plans.items()
         }
-        for name, row in metrics.items()
+        for name, result in results.items():
+            _accumulate(metrics[name], result, task)
+        for name, decision in decisions.items():
+            route_mix[name][decision.mode.value] += 1
+
+        for name in LEARNED_STRATEGIES:
+            result = results[name]
+            if index < window:
+                _accumulate(curve_sums[name]["first"], result, task)
+            if index >= tasks - window:
+                _accumulate(curve_sums[name]["last"], result, task)
+            routers[name].record_outcome(
+                decisions[name],
+                ExecutionOutcome(
+                    result.quality,
+                    agent_scores=result.agent_scores,
+                    requirement_scores=result.requirement_scores,
+                    actual_cost=result.cost,
+                    actual_latency_ms=result.latency_ms,
+                ),
+            )
+
+    averages = {name: _average(row, tasks) for name, row in metrics.items()}
+    updates = {name: router.success_model.updates for name, router in routers.items()}
+    curves = {
+        name: {
+            "first": _average(windows["first"], window),
+            "last": _average(windows["last"], window),
+        }
+        for name, windows in curve_sums.items()
     }
-    return averages, modes, learned.success_model.updates
+    return averages, route_mix, updates, curves
 
 
-def run(seed: int = 11, tasks: int = 500) -> None:
-    metrics, modes, updates = simulate(seed, tasks)
-    print(f"tasks: {tasks} (external nonlinear simulator; seed={seed})")
-    print("strategy       quality  utility  cost/budget  latency/deadline  deadline-miss")
-    for name, row in metrics.items():
-        print(
-            f"{name:14s} {row['quality']:7.3f}  {row['utility']:7.3f}"
-            f"      {row['cost']:7.3f}           {row['latency']:7.3f}"
-            f"         {row['misses']:5.1f}%"
-        )
-    print(f"learned route mix: {dict(modes)}")
-    print(f"online model updates: {updates}")
+def _summarize_values(values: list[float]) -> dict[str, float]:
+    return {"mean": mean(values), "population_stddev": pstdev(values)}
 
 
 def summarize_suite(
     seeds: tuple[int, ...] = DEFAULT_SEEDS,
     tasks_per_seed: int = 500,
 ) -> dict[str, object]:
-    """Run a deterministic suite and return a machine-readable summary."""
-
     if not seeds:
         raise ValueError("at least one benchmark seed is required")
     if tasks_per_seed <= 0:
         raise ValueError("tasks_per_seed must be positive")
     simulations = [simulate(seed, tasks_per_seed) for seed in seeds]
     runs = [result[0] for result in simulations]
-    route_mix: Counter[str] = Counter()
-    model_updates: list[int] = []
-    for _, modes, updates in simulations:
-        route_mix.update(modes)
-        model_updates.append(updates)
 
-    strategies: dict[str, dict[str, dict[str, float]]] = {}
-    for name in runs[0]:
-        strategies[name] = {}
-        for metric in ("quality", "utility", "cost", "latency", "misses"):
-            values = [run_metrics[name][metric] for run_metrics in runs]
-            strategies[name][metric] = {
-                "mean": mean(values),
-                "population_stddev": pstdev(values),
+    strategies = {
+        name: {
+            metric: _summarize_values(
+                [run_metrics[name][metric] for run_metrics in runs]
+            )
+            for metric in METRICS
+        }
+        for name in STRATEGIES
+    }
+    route_mix_by_strategy: dict[str, Counter[str]] = {
+        name: Counter() for name in ("static_sage", *LEARNED_STRATEGIES)
+    }
+    for _, mixes, _, _ in simulations:
+        for name, modes in mixes.items():
+            route_mix_by_strategy[name].update(modes)
+
+    learning_curve = {
+        name: {
+            period: {
+                metric: _summarize_values(
+                    [simulation[3][name][period][metric] for simulation in simulations]
+                )
+                for metric in METRICS
             }
+            for period in ("first", "last")
+        }
+        for name in LEARNED_STRATEGIES
+    }
+    model_updates = {
+        name: [simulation[2][name] for simulation in simulations]
+        for name in ("static_sage", *LEARNED_STRATEGIES)
+    }
     return {
-        "schema_version": 1,
-        "simulator": "external_nonlinear",
+        "schema_version": 2,
+        "simulator": "held_out_geometric_v2",
         "seeds": list(seeds),
         "tasks_per_seed": tasks_per_seed,
         "total_tasks": len(seeds) * tasks_per_seed,
+        "learning_curve_window": min(100, max(1, tasks_per_seed // 2)),
         "strategies": strategies,
-        "learned_route_mix": dict(sorted(route_mix.items())),
-        "online_model_updates": model_updates,
+        "route_mix_by_strategy": {
+            name: dict(sorted(modes.items()))
+            for name, modes in route_mix_by_strategy.items()
+        },
+        "model_updates": model_updates,
+        "learning_curve": learning_curve,
+        "ablation_design": {
+            "static_sage": "informed prior, no updates, no exploration",
+            "learned_no_explore": "informed prior, updates, no exploration",
+            "learned_explore": "informed prior, updates, Thompson exploration",
+            "learned_random_init": "weak random prior, updates, no exploration",
+        },
     }
 
 
@@ -370,24 +555,32 @@ def run_suite(
     summary = summarize_suite(seeds, tasks_per_seed)
     print(
         f"tasks: {summary['total_tasks']} "
-        f"({len(seeds)} seeds x {tasks_per_seed}; external nonlinear simulator)"
+        f"({len(seeds)} seeds x {tasks_per_seed}; held-out geometric evaluator)"
     )
-    print("strategy       quality       utility       cost/budget   latency/deadline  deadline-miss")
+    print("strategy              quality       utility       cost/budget  deadline-miss")
     strategies = summary["strategies"]
     assert isinstance(strategies, dict)
     for name, values in strategies.items():
         print(
-            f"{name:14s} {values['quality']['mean']:.3f}"
+            f"{name:21s} {values['quality']['mean']:.3f}"
             f"+/-{values['quality']['population_stddev']:.3f}"
             f"  {values['utility']['mean']:.3f}"
             f"+/-{values['utility']['population_stddev']:.3f}"
             f"    {values['cost']['mean']:.3f}"
             f"+/-{values['cost']['population_stddev']:.3f}"
-            f"      {values['latency']['mean']:.3f}"
-            f"+/-{values['latency']['population_stddev']:.3f}"
-            f"       {values['misses']['mean']:4.1f}%"
+            f"      {values['misses']['mean']:4.1f}%"
         )
-    print(f"learned route mix: {summary['learned_route_mix']}")
+    window = summary["learning_curve_window"]
+    curve = summary["learning_curve"]
+    assert isinstance(curve, dict)
+    print(f"learning curve: first vs last {window} tasks per seed")
+    for name in LEARNED_STRATEGIES:
+        print(
+            f"{name:21s} quality {curve[name]['first']['quality']['mean']:.3f}"
+            f" -> {curve[name]['last']['quality']['mean']:.3f};"
+            f" utility {curve[name]['first']['utility']['mean']:.3f}"
+            f" -> {curve[name]['last']['utility']['mean']:.3f}"
+        )
     return summary
 
 

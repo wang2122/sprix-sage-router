@@ -24,9 +24,13 @@ python -m examples.a2a_execution_plan
 Before submitting, run:
 
 ```bash
-python -m compileall -q sprix_sage.py sprix_a2a.py demo.py benchmark.py examples test_sprix_*.py test_benchmark.py
+python -m pip install -e '.[dev]'
+ruff check .
+mypy
+python -m compileall -q sprix_sage.py sprix_learning.py sprix_types.py sprix_a2a.py demo.py benchmark.py benchmark_evaluator.py benchmark_scaling.py examples test_sprix_*.py test_benchmark.py
 python -m unittest -v
 python benchmark.py --seeds 3 --tasks-per-seed 25 --json benchmark-smoke.json
+python benchmark_scaling.py --agent-counts 5,20 --repeats 1
 ```
 
 Use a focused branch such as `fix/permission-filter` or `feat/a2a-adapter`. Keep generated benchmark JSON, private traces, local environments, and credentials out of commits.

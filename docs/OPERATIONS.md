@@ -5,8 +5,8 @@ Sprix SAGE Router is a research preview. This guide defines the controls an adop
 ## Recommended request lifecycle
 
 1. Authenticate the caller and resolve tenant policy.
-2. Validate the task DAG and place explicit caps on requirements, candidates, beam width, and collaborators.
-3. Retrieve a bounded candidate set from a trusted registry.
+2. Validate the task DAG and place explicit caps on requirements, `candidate_limit`, beam width, and collaborators.
+3. Retrieve a bounded candidate set from a trusted registry; treat the router's quote-only top-k pass as a second local bound, not a replacement for indexed retrieval.
 4. Verify permissions and normalize quotes before invoking SAGE.
 5. Store the routing trace with a correlation ID and policy version.
 6. Require approval for high-risk, destructive, regulated, or high-cost routes.
@@ -21,7 +21,13 @@ Sprix SAGE Router is a research preview. This guide defines the controls an adop
 - the selected mode, team, assignments, topology, utility, and rationale;
 - all feasible alternatives ranked by utility;
 - every eligible agent;
-- excluded agents and hard-filter reasons such as missing permissions, cost, latency, failure, or availability.
+- excluded agents and hard-filter reasons such as missing permissions, failure, or availability;
+- locally prefiltered agent IDs;
+- `feasible` and explicit budget/deadline `constraint_violations` for degraded plans.
+
+Budget and deadline are soft only in the explicit best-effort fallback. Permissions,
+failure state, and availability remain hard. Use `allow_degraded=False` when the
+caller must fail closed instead of receiving a marked plan.
 
 Store task and policy identifiers alongside the trace, but do not place secrets, private prompts, or raw credentials inside router objects.
 
@@ -44,6 +50,14 @@ Measure the complete system rather than only SAGE's predicted probability:
 - permission denials and policy violations;
 - probability calibration, regret, and drift by task segment;
 - P50, P95, and P99 latency for routing and execution separately.
+
+## Routing latency and candidate bounds
+
+The expensive search scales with the post-filter candidate count, not merely the
+beam width. Keep `candidate_limit` finite, monitor `prefiltered_agents`, and run
+`python benchmark_scaling.py` on deployment hardware. Request-local memoization
+avoids recalculating calibrated skill, cost, and latency during one route; it is
+not a cross-request cache and cannot become stale after outcome updates.
 
 ## Rollout gates
 

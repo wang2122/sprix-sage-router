@@ -2,8 +2,7 @@
 
 import json
 
-from sprix_sage import Agent, ExecutionOutcome, ExecutionState, Mode, Requirement, SAGERouter, Task
-
+from sprix_sage import Agent, ExecutionOutcome, ExecutionState, Requirement, SAGERouter, Task
 
 agents = [
     Agent("generalist", {"coding": 0.90}, 0.02, 400),

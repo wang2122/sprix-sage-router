@@ -1,4 +1,4 @@
-# SAGE v0.2 algorithm design
+# SAGE v0.3 algorithm design
 
 ## 1. Decision problem
 
@@ -23,11 +23,13 @@ A task supplies:
 
 ## 3. Permission-first feasibility
 
-An agent is removed before ranking when it is unavailable, failed, unauthorized, unaffordable, or unable to satisfy the deadline. Cost and latency quotes are inflated by learned bid-fidelity posteriors and current load.
+An agent is removed before ranking when it is unavailable, failed, or unauthorized. Cost and latency quotes are inflated by learned bid-fidelity posteriors and current load.
 
-After a team has been formed, SAGE performs a second feasibility check using total team cost and DAG critical-path latency. A high learned score can never override these constraints.
+After the hard filter, a deterministic quote-only prefilter retains the incumbent, active executors, and the highest-relevance peers up to `candidate_limit` (12 by default). This (O(n|R|)) pass bounds the expensive combinatorial search without using the learned route objective. Request-scoped caches memoize calibrated skill, risk-adjusted cost, and latency values. Candidate retrieval in a production registry should happen before this local prefilter.
 
-`route_with_trace` retains the explicit exclusion reasons and every feasible evaluated alternative. This creates an audit record without changing the optimization objective or allowing an excluded agent back into the candidate set.
+After a team has been formed, SAGE performs a second feasibility check using workload-sensitive team cost and DAG critical-path latency. A high learned score can never override permissions or availability. If no plan satisfies budget and deadline, the default API returns the least-violating authorized plan with `feasible=False` and explicit `constraint_violations`. Set `allow_degraded=False` for strict exception behavior. Degraded routing never relaxes permissions, failure state, or availability.
+
+`route_with_trace` retains hard-filter reasons, prefiltered agent IDs, feasible alternatives, and degraded candidates. This creates an audit record without allowing an unauthorized or unavailable agent back into the candidate set.
 
 ## 4. Contextual capability calibration
 
@@ -65,7 +67,15 @@ This matters when the strongest agent for several independent requirements would
 
 Requirement dependencies induce communication edges whenever two dependent nodes are assigned to different agents. Any remaining disconnected executor component is linked to the route coordinator through a component root, so the reported topology covers the entire selected team and coordination overhead is not understated. Independent requirements on different agents can run concurrently; requirements assigned to the same agent are serialized. The resulting resource-constrained DAG schedule estimates critical-path latency before the route is accepted.
 
-Pairwise Beta posteriors model observed collaboration residuals, while skill-vector similarity measures possible redundancy. These are features rather than claims that the complete utility is submodular.
+An agent quote is no longer charged once per selected team member regardless of work. If (w_a) is the fraction of remaining requirement weight assigned to agent (a) and (ho) is `cost_activation_fraction` (0.15 by default), predicted team cost is:
+
+$$
+C(S,z)=\sum_{a\in S}\widehat c_a\left[\rho+(1-\rho)w_a\right]
+$$
+
+The activation term covers setup and coordination while the workload term prevents a small requirement from being priced like the entire task. Production adapters can replace this model with token-, tool-, or milestone-level quotes.
+
+Pairwise Beta posteriors model explicitly evaluated collaboration evidence, while skill-vector similarity measures possible redundancy. Team-level success alone does not update pair beliefs. These are features rather than claims that the complete utility is submodular.
 
 ## 6. Learned success model
 
@@ -75,7 +85,7 @@ $$
 \widehat p(y=1\mid x,m,S,z,E)=\sigma\left(w_0+w^\top\phi(x,m,S,z,E)\right)
 $$
 
-Features currently include coverage, bottleneck satisfaction, contextual trust, pair synergy, redundancy, coordination loss, handoff loss, switching loss, and executor load. The model starts from conservative priors and applies regularized stochastic-gradient updates after real outcomes.
+Features currently include coverage, bottleneck satisfaction, contextual trust, pair synergy, redundancy, coordination loss, handoff loss, switching loss, and executor load. The model starts from configurable priors and applies regularized stochastic-gradient updates after real outcomes. `OnlineSuccessModel.randomized()` and `.zeroed()` expose weak-prior ablations so evaluation can separate the hand-written prior from learning.
 
 This lightweight model is intentionally replaceable. Production deployments can substitute a GBDT, encoder model, Bayesian neural network, or offline contextual-bandit reward model while retaining the same constraint and search layers.
 
@@ -113,14 +123,16 @@ COLLABORATE teams are then constructed using the outer bounded beam search:
 
 1. start with the incumbent;
 2. expand each frontier team with every eligible peer;
-3. reject teams that exceed total budget;
+3. evaluate workload-sensitive cost after assigning requirements;
 4. evaluate assignment, DAG schedule, probability, and utility;
 5. retain the best `beam_width` partial teams;
 6. continue until the collaborator limit is reached.
 
 The nested search preserves multiple competing team and ownership prefixes instead of committing to one greedy team or one greedy role map. It is still a bounded approximation: partial-assignment ranking is heuristic, and SAGE does not claim a global optimum for the non-submodular, resource-constrained full objective.
 
-For \(n\) eligible peers, team beam width \(B_t\), assignment beam width \(B_a\), collaborator limit \(k\), and \(|R|\) requirements, the current reference implementation is approximately \(O(B_tknB_a k|R|^2)\), excluding candidate retrieval. The extra \(|R|\) factor comes from rescoring bounded assignment prefixes for clarity in the dependency-free implementation.
+For \(n\) registry agents, prefilter limit \(p\), team beam width \(B_t\), assignment beam width \(B_a\), collaborator limit \(k\), and \(|R|\) requirements, candidate scoring costs \(O(n|R|)\). The bounded search after prefiltering is approximately \(O(B_tkpB_a k|R|^2)\). The extra \(|R|\) factor comes from rescoring bounded assignment prefixes for clarity in the dependency-free implementation. Without prefiltering, substitute \(n\) for \(p\), which explains the prior near-linear latency growth with registry size.
+
+`benchmark_scaling.py` measures this boundary. On one Apple Silicon development machine, the default top-12 configuration routed the six-requirement case in a median 78.4 ms at 20 agents, 78.9 ms at 40, and 80.1 ms at 80 (three repeats; environment-specific, not a latency SLA). Candidate retrieval, network calls, and executor latency are excluded.
 
 ![Bounded outer beam search over collaboration teams](docs/assets/fig08-beam-search.svg)
 
@@ -128,7 +140,7 @@ For \(n\) eligible peers, team beam width \(B_t\), assignment beam width \(B_a\)
 
 ## 9. Evidence-aware online updates
 
-`ExecutionOutcome` can contain overall quality, per-agent scores, per-requirement scores, actual cost, and actual latency.
+`ExecutionOutcome` can contain overall quality, per-agent scores, per-requirement scores, explicit pair scores, actual cost, and actual latency.
 
 Updates follow the strongest available evidence:
 
@@ -136,31 +148,38 @@ Updates follow the strongest available evidence:
 2. otherwise, scores of requirements assigned to an agent provide partial credit;
 3. if only a team outcome exists, it is treated as low-weight ambiguous evidence;
 4. requirement scores update contextual capability posteriors;
-5. pair synergy receives residual rather than unconditional full-team credit;
+5. pair synergy updates only from explicit `pair_scores`; an overall team score is not treated as evidence of a pair effect;
 6. quote-versus-actual deviations update cost and latency fidelity;
 7. the selected route updates the online success predictor.
 
-This is safer than assigning the same binary outcome to every member, but it is not yet causal credit assignment. Logged propensities, randomized exploration, and doubly robust off-policy evaluation are still needed for production learning.
+This avoids the previous unsupported `0.5 + overall - individual_mean` residual heuristic, but it is not yet causal credit assignment. Logged propensities, randomized exploration, and doubly robust off-policy evaluation are still needed for production learning.
 
 The reference implementation can export these learned beliefs and model parameters as a versioned JSON snapshot. Restore requires an exact agent roster, which prevents evidence from silently attaching to a different marketplace population. Snapshot persistence does not make concurrent updates transactional and does not preserve the exploration random-generator state.
 
-## 10. External benchmark
+## 10. Held-out synthetic benchmark and ablations
 
-`benchmark.py` uses an external nonlinear simulator whose hidden capabilities, pair effects, quality function, realized cost, and realized latency differ from SAGE's prediction model. Its default suite covers five seeds and 2,500 tasks. It compares:
+`benchmark_evaluator.py` is isolated from SAGE scoring helpers. Its latent capabilities are independently specified rather than advertised skills plus small perturbations. Quality combines a weighted geometric mean and bottleneck, team compatibility is multiplicative, workload cost is nonlinear, and handoff loss has a different form from SAGE's switch loss. The default suite covers five seeds and 2,500 tasks. It compares:
 
 - incumbent-only execution;
 - advertised-skill single-agent routing;
 - a hidden-information solo oracle;
+- random and greedy team formation;
 - static SAGE without outcome updates;
-- online SAGE with contextual updates.
+- learned SAGE without exploration;
+- learned SAGE with exploration;
+- learned SAGE from a weak random model prior.
 
-The simulator measures external quality, a common quality-cost-latency utility, normalized resource use, deadline violations, and route distribution. It removes the previous circular evaluation in which SAGE's own noisy-OR probability generated its success labels.
+The report includes common held-out quality-cost-latency utility, normalized resource use, deadline violations, route distribution, and first-versus-last 100-task learning windows. Static versus learned-no-exploration isolates updates; learned-no-exploration versus learned-exploration isolates the exploration policy; informed versus random initialization exposes prior sensitivity.
 
-The benchmark is still synthetic. Publishable evidence requires real task traces, heterogeneous A2A endpoints, strong learned baselines, calibration and regret analysis, safety tests, and repeated-seed confidence intervals.
+The benchmark is still synthetic and the environment remains designed by the repository authors. It is useful for regression and counterexamples, not evidence of external validity. Publishable evidence requires real task traces, heterogeneous A2A endpoints, additional learned and optimization baselines, calibration and regret analysis, safety tests, and repeated-execution confidence intervals.
 
 The command-line runner accepts explicit seeds and task counts and can emit a JSON summary containing population statistics, route mix, and model-update counts. This improves reproducibility but does not change the evidentiary status of the simulator.
 
-## 11. Integration and operational boundary
+## 11. Relationship to prior work
+
+SAGE draws on coalition formation, multi-agent task allocation, combinatorial allocation, contextual bandits, LLM routing, and dynamic agent-network research. It uses heuristic bounded search rather than claiming global optimality or auction truthfulness, and its current online updates do not satisfy causal bandit-evaluation requirements. See [RELATED_WORK.md](RELATED_WORK.md) for a source-linked comparison table and explicit scope differences.
+
+## 12. Integration and operational boundary
 
 `sprix_a2a.py` separates Agent Card declarations from local numeric evidence. A card skill becomes routable only when the caller supplies a calibrated score for the declared skill ID, plus cost, latency, permissions, availability, and load. The adapter then converts a selected route into a transport-neutral execution plan.
 
