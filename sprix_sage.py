@@ -43,8 +43,8 @@ class Requirement:
     def __post_init__(self) -> None:
         if not self.name:
             raise ValueError("requirement name must not be empty")
-        if self.weight <= 0:
-            raise ValueError("requirement weight must be positive")
+        if not math.isfinite(self.weight) or self.weight <= 0:
+            raise ValueError("requirement weight must be a positive finite number")
         if not 0 <= self.minimum <= 1:
             raise ValueError("requirement minimum must be in [0, 1]")
         if self.name in self.depends_on:
@@ -69,8 +69,12 @@ class Task:
     def __post_init__(self) -> None:
         if not self.requirements:
             raise ValueError("task must have at least one requirement")
-        if self.value <= 0 or self.budget <= 0 or self.deadline_ms <= 0:
-            raise ValueError("value, budget, and deadline must be positive")
+        if not math.isfinite(self.value) or self.value <= 0:
+            raise ValueError("value must be a positive finite number")
+        if math.isnan(self.budget) or self.budget <= 0:
+            raise ValueError("budget must be a positive number or infinity")
+        if math.isnan(self.deadline_ms) or self.deadline_ms <= 0:
+            raise ValueError("deadline must be a positive number or infinity")
         for value, label in (
             (self.risk_tolerance, "risk_tolerance"),
             (self.progress, "progress"),
@@ -143,8 +147,10 @@ class Agent:
     load: float = 0.0
 
     def __post_init__(self) -> None:
-        if self.cost < 0 or self.latency_ms < 0:
-            raise ValueError("cost and latency must be non-negative")
+        if not math.isfinite(self.cost) or self.cost < 0:
+            raise ValueError("cost must be a non-negative finite number")
+        if not math.isfinite(self.latency_ms) or self.latency_ms < 0:
+            raise ValueError("latency must be a non-negative finite number")
         if not 0 <= self.availability <= 1 or not 0 <= self.load <= 1:
             raise ValueError("availability and load must be in [0, 1]")
         if any(not 0 <= score <= 1 for score in self.skills.values()):

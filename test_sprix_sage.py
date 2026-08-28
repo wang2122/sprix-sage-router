@@ -151,6 +151,47 @@ class SAGERouterTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "non-negative"):
                     Bid("peer", "code", quoted_cost, promised_latency_ms)
 
+    def test_agent_rejects_non_finite_cost_and_latency(self) -> None:
+        invalid = (
+            (math.nan, 300),
+            (math.inf, 300),
+            (-math.inf, 300),
+            (0.02, math.nan),
+            (0.02, math.inf),
+            (0.02, -math.inf),
+        )
+
+        for cost, latency_ms in invalid:
+            with self.subTest(cost=cost, latency_ms=latency_ms):
+                with self.assertRaisesRegex(ValueError, "finite"):
+                    Agent("peer", {"code": 0.9}, cost, latency_ms)
+
+    def test_requirement_rejects_non_finite_weight(self) -> None:
+        for weight in (math.nan, math.inf, -math.inf):
+            with self.subTest(weight=weight):
+                with self.assertRaisesRegex(ValueError, "finite"):
+                    Requirement("code", weight=weight)
+
+    def test_task_rejects_invalid_value_budget_and_deadline(self) -> None:
+        for field_name, value, message in (
+            ("value", math.nan, "finite"),
+            ("value", math.inf, "finite"),
+            ("value", -math.inf, "finite"),
+            ("budget", math.nan, "infinity"),
+            ("budget", -math.inf, "infinity"),
+            ("deadline_ms", math.nan, "infinity"),
+            ("deadline_ms", -math.inf, "infinity"),
+        ):
+            with self.subTest(field=field_name, value=value):
+                with self.assertRaisesRegex(ValueError, message):
+                    Task("t", (Requirement("code"),), **{field_name: value})
+
+    def test_task_keeps_infinite_budget_and_deadline_defaults(self) -> None:
+        task = Task("t", (Requirement("code"),))
+
+        self.assertTrue(math.isinf(task.budget))
+        self.assertTrue(math.isinf(task.deadline_ms))
+
     def test_outcomes_update_reliability_and_pair_synergy(self) -> None:
         agents = [
             Agent("current", {"planning": 0.9, "coding": 0.2}, 0.02, 300),
