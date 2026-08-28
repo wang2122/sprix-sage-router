@@ -27,9 +27,11 @@ Before submitting, run:
 python -m pip install -e '.[dev]'
 ruff check .
 mypy
-python -m compileall -q sprix_sage.py sprix_learning.py sprix_types.py sprix_a2a.py demo.py benchmark.py benchmark_evaluator.py benchmark_scaling.py examples test_sprix_*.py test_benchmark.py
+python -m compileall -q sprix_sage.py sprix_learning.py sprix_types.py sprix_a2a.py demo.py benchmark.py benchmark_evaluator.py benchmark_dynamic.py benchmark_dynamic_evaluator.py benchmark_trust.py benchmark_scaling.py examples test_*.py
 python -m unittest -v
 python benchmark.py --seeds 3 --tasks-per-seed 25 --json benchmark-smoke.json
+python benchmark_dynamic.py --seeds 3 --trajectories-per-seed 5 --sweep-cases-per-seed 2 --json dynamic-smoke.json --svg progress-smoke.svg
+python benchmark_trust.py --seeds 3 --observations 50 --json trust-smoke.json
 python benchmark_scaling.py --agent-counts 5,20 --repeats 1
 ```
 

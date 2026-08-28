@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="520" viewBox="0 0 900 520" role="img" aria-labelledby="title desc">
+<title id="title">Utility across in-flight progress</title>
+<desc id="desc">Progress-aware SAGE utility rises above an otherwise identical progress-masked baseline as in-flight completion increases from zero to ninety percent in a controlled synthetic intervention.</desc>
+<rect width="900" height="520" fill="#ffffff"/>
+<text x="88" y="34" font-family="Arial, sans-serif" font-size="22" font-weight="700" fill="#172033">Checkpoint-aware continuation value</text>
+<text x="88" y="56" font-family="Arial, sans-serif" font-size="13" fill="#586174">Controlled synthetic intervention; mean over five seeds</text>
+<line x1="88" y1="438.0" x2="868" y2="438.0" stroke="#dfe4ec" stroke-width="1"/>
+<text x="76" y="442.0" text-anchor="end" font-family="Arial, sans-serif" font-size="12" fill="#586174">0.60</text>
+<line x1="88" y1="346.0" x2="868" y2="346.0" stroke="#dfe4ec" stroke-width="1"/>
+<text x="76" y="350.0" text-anchor="end" font-family="Arial, sans-serif" font-size="12" fill="#586174">0.65</text>
+<line x1="88" y1="254.0" x2="868" y2="254.0" stroke="#dfe4ec" stroke-width="1"/>
+<text x="76" y="258.0" text-anchor="end" font-family="Arial, sans-serif" font-size="12" fill="#586174">0.70</text>
+<line x1="88" y1="162.0" x2="868" y2="162.0" stroke="#dfe4ec" stroke-width="1"/>
+<text x="76" y="166.0" text-anchor="end" font-family="Arial, sans-serif" font-size="12" fill="#586174">0.75</text>
+<line x1="88" y1="70.0" x2="868" y2="70.0" stroke="#dfe4ec" stroke-width="1"/>
+<text x="76" y="74.0" text-anchor="end" font-family="Arial, sans-serif" font-size="12" fill="#586174">0.80</text>
+<line x1="88.0" y1="70" x2="88.0" y2="438" stroke="#f0f2f6" stroke-width="1"/>
+<text x="88.0" y="462" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#586174">0.0</text>
+<line x1="174.7" y1="70" x2="174.7" y2="438" stroke="#f0f2f6" stroke-width="1"/>
+<text x="174.7" y="462" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#586174">0.1</text>
+<line x1="261.3" y1="70" x2="261.3" y2="438" stroke="#f0f2f6" stroke-width="1"/>
+<text x="261.3" y="462" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#586174">0.2</text>
+<line x1="348.0" y1="70" x2="348.0" y2="438" stroke="#f0f2f6" stroke-width="1"/>
+<text x="348.0" y="462" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#586174">0.3</text>
+<line x1="434.7" y1="70" x2="434.7" y2="438" stroke="#f0f2f6" stroke-width="1"/>
+<text x="434.7" y="462" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#586174">0.4</text>
+<line x1="521.3" y1="70" x2="521.3" y2="438" stroke="#f0f2f6" stroke-width="1"/>
+<text x="521.3" y="462" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#586174">0.5</text>
+<line x1="608.0" y1="70" x2="608.0" y2="438" stroke="#f0f2f6" stroke-width="1"/>
+<text x="608.0" y="462" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#586174">0.6</text>
+<line x1="694.7" y1="70" x2="694.7" y2="438" stroke="#f0f2f6" stroke-width="1"/>
+<text x="694.7" y="462" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#586174">0.7</text>
+<line x1="781.3" y1="70" x2="781.3" y2="438" stroke="#f0f2f6" stroke-width="1"/>
+<text x="781.3" y="462" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#586174">0.8</text>
+<line x1="868.0" y1="70" x2="868.0" y2="438" stroke="#f0f2f6" stroke-width="1"/>
+<text x="868.0" y="462" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#586174">0.9</text>
+<polyline points="88.0,335.7 174.7,331.6 261.3,327.5 348.0,323.4 434.7,319.2 521.3,314.9 608.0,310.5 694.7,306.1 781.3,301.6 868.0,297.1" fill="none" stroke="#7b879a" stroke-width="3" stroke-dasharray="7 5"/>
+<polyline points="88.0,335.7 174.7,310.6 261.3,271.0 348.0,254.3 434.7,242.2 521.3,229.7 608.0,216.6 694.7,202.7 781.3,187.9 868.0,171.2" fill="none" stroke="#1267a5" stroke-width="3.5"/>
+<circle cx="88.0" cy="335.7" r="4" fill="#7b879a" stroke="#ffffff" stroke-width="1.5"/>
+<circle cx="88.0" cy="335.7" r="4" fill="#1267a5" stroke="#ffffff" stroke-width="1.5"/>
+<circle cx="174.7" cy="331.6" r="4" fill="#7b879a" stroke="#ffffff" stroke-width="1.5"/>
+<circle cx="174.7" cy="310.6" r="4" fill="#1267a5" stroke="#ffffff" stroke-width="1.5"/>
+<circle cx="261.3" cy="327.5" r="4" fill="#7b879a" stroke="#ffffff" stroke-width="1.5"/>
+<circle cx="261.3" cy="271.0" r="4" fill="#1267a5" stroke="#ffffff" stroke-width="1.5"/>
+<circle cx="348.0" cy="323.4" r="4" fill="#7b879a" stroke="#ffffff" stroke-width="1.5"/>
+<circle cx="348.0" cy="254.3" r="4" fill="#1267a5" stroke="#ffffff" stroke-width="1.5"/>
+<circle cx="434.7" cy="319.2" r="4" fill="#7b879a" stroke="#ffffff" stroke-width="1.5"/>
+<circle cx="434.7" cy="242.2" r="4" fill="#1267a5" stroke="#ffffff" stroke-width="1.5"/>
+<circle cx="521.3" cy="314.9" r="4" fill="#7b879a" stroke="#ffffff" stroke-width="1.5"/>
+<circle cx="521.3" cy="229.7" r="4" fill="#1267a5" stroke="#ffffff" stroke-width="1.5"/>
+<circle cx="608.0" cy="310.5" r="4" fill="#7b879a" stroke="#ffffff" stroke-width="1.5"/>
+<circle cx="608.0" cy="216.6" r="4" fill="#1267a5" stroke="#ffffff" stroke-width="1.5"/>
+<circle cx="694.7" cy="306.1" r="4" fill="#7b879a" stroke="#ffffff" stroke-width="1.5"/>
+<circle cx="694.7" cy="202.7" r="4" fill="#1267a5" stroke="#ffffff" stroke-width="1.5"/>
+<circle cx="781.3" cy="301.6" r="4" fill="#7b879a" stroke="#ffffff" stroke-width="1.5"/>
+<circle cx="781.3" cy="187.9" r="4" fill="#1267a5" stroke="#ffffff" stroke-width="1.5"/>
+<circle cx="868.0" cy="297.1" r="4" fill="#7b879a" stroke="#ffffff" stroke-width="1.5"/>
+<circle cx="868.0" cy="171.2" r="4" fill="#1267a5" stroke="#ffffff" stroke-width="1.5"/>
+<line x1="88" y1="438" x2="868" y2="438" stroke="#172033" stroke-width="1.5"/>
+<line x1="88" y1="70" x2="88" y2="438" stroke="#172033" stroke-width="1.5"/>
+<text x="478.0" y="494" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#172033">In-flight completion fraction</text>
+<text x="24" y="254.0" text-anchor="middle" transform="rotate(-90 24 254.0)" font-family="Arial, sans-serif" font-size="14" fill="#172033">Held-out utility</text>
+<line x1="590" y1="30" x2="622" y2="30" stroke="#1267a5" stroke-width="3.5"/>
+<text x="630" y="34" font-family="Arial, sans-serif" font-size="13" fill="#172033">Progress-aware SAGE</text>
+<line x1="590" y1="52" x2="622" y2="52" stroke="#7b879a" stroke-width="3" stroke-dasharray="7 5"/>
+<text x="630" y="56" font-family="Arial, sans-serif" font-size="13" fill="#172033">Progress-masked SAGE</text>
+</svg>

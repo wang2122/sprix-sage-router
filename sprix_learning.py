@@ -67,8 +67,6 @@ class OnlineSuccessModel:
             "synergy": 0.35,
             "redundancy": -0.45,
             "coordination_loss": -0.55,
-            "handoff_loss": -0.70,
-            "switch_loss": -0.55,
             "load": -0.35,
         }
     )

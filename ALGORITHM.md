@@ -1,4 +1,4 @@
-# SAGE v0.3 algorithm design
+# SAGE checkpoint-aware algorithm design
 
 ## 1. Decision problem
 
@@ -19,7 +19,9 @@ A task supplies:
 - coordination, handoff, and replanning friction;
 - an estimate of how much incumbent context can be transferred.
 
-`ExecutionState` supplies the active route, completed requirements, current progress, failed agents, transferable context, and consecutive failure count. Completed DAG nodes are removed from the next routing decision while preserving their dependency effects.
+`ExecutionState` supplies the active route and ownership map, completed requirements, the current in-flight requirement, its completed fraction and observed partial quality, per-artifact transferability, failed agents, and consecutive failure count. Completed DAG nodes are removed from the next routing decision while preserving dependency effects.
+
+The scalar `progress` field remains as a coarse compatibility signal. Checkpoint-aware routing uses the more specific `inflight_requirement`, `inflight_progress`, `inflight_quality`, `active_assignments`, and `artifact_transferability` fields. A progress-masked ablation retains the same completed nodes and resource limits but sets the in-flight fraction to zero.
 
 ## 3. Permission-first feasibility
 
@@ -53,29 +55,41 @@ This prevents success in one domain from fully transferring to unrelated domains
 
 <p align="center"><sub><b>Contextual calibration and learning.</b> Declared skill and bid confidence are gated by global and requirement-conditioned evidence; updates follow the strongest available credit signal.</sub></p>
 
-## 5. Team coverage, assignment, and topology
+## 5. Checkpoint-adjusted ownership, assignment, and topology
 
-For each remaining requirement, team coverage is:
+Let current owner \(a_0\) have completed fraction \(f_r\) of the in-flight requirement, and let \(\tau_r\) be that artifact's portability. Candidate owner \(a\) reuses:
 
 $$
-C_r(S)=1-\prod_{a\in S}(1-q_{a,r})
+\eta_{a,r}=\begin{cases}
+f_r,& a=a_0\text{ and }a_0\text{ has not failed},\\
+f_r\tau_r,&\text{otherwise}.
+\end{cases}
 $$
+
+Its checkpoint-adjusted capability and remaining work are:
+
+$$
+\bar q_{a,r}=\eta_{a,r}q_r^{\mathrm{current}}+(1-\eta_{a,r})q_{a,r},
+\qquad d_{a,r}=1-\eta_{a,r}.
+$$
+
+When a partial artifact has an observed evaluator score, it supplies \(q_r^{\mathrm{current}}\); otherwise the calibrated current-owner estimate is used. Only the assigned owner contributes requirement coverage. The previous noisy-OR over every selected teammate was removed because it credited agents that were not assigned work.
 
 Role assignment is optimized jointly with the schedule instead of assigning every requirement to its strongest calibrated agent in isolation. A bounded assignment beam expands owners in topological requirement order and retains prefixes using assigned capability, bottleneck satisfaction, contextual trust, posterior uncertainty, communication edges, and current critical-path latency. The original strongest-agent assignment is always retained as a fallback candidate. Complete assignments are compared with the same learned success model and constrained utility as route candidates, and the highest-utility deadline-feasible assignment represents the team.
 
-This matters when the strongest agent for several independent requirements would serialize all of them: assigning one requirement to a slightly weaker peer can reduce critical-path latency enough to satisfy the deadline. Weighted noisy-OR team coverage and the lowest assigned-owner threshold ratio remain separate model features, so one missing critical capability cannot be hidden by a high mean.
+This matters when the strongest agent for several independent requirements would serialize all of them: assigning one requirement to a slightly weaker peer can reduce critical-path latency enough to satisfy the deadline. The weighted assigned-owner mean and lowest threshold ratio remain separate features, so one missing critical capability cannot be hidden by a high mean.
 
-Requirement dependencies induce communication edges whenever two dependent nodes are assigned to different agents. Any remaining disconnected executor component is linked to the route coordinator through a component root, so the reported topology covers the entire selected team and coordination overhead is not understated. Independent requirements on different agents can run concurrently; requirements assigned to the same agent are serialized. The resulting resource-constrained DAG schedule estimates critical-path latency before the route is accepted.
+Requirement dependencies induce communication edges whenever two dependent nodes are assigned to different agents. Any remaining disconnected executor component is linked to the route coordinator through a component root, so the reported topology covers the entire selected team and coordination overhead is not understated. Independent requirements on different agents can run concurrently; requirements assigned to the same agent are serialized. The resulting resource-constrained DAG schedule estimates critical-path latency before the route is accepted. The topology is an inspectable schedule output, not a claimed communication-graph optimizer.
 
-An agent quote is no longer charged once per selected team member regardless of work. If (w_a) is the fraction of remaining requirement weight assigned to agent (a) and (ho) is `cost_activation_fraction` (0.15 by default), predicted team cost is:
+If \(w_a=\sum_{r:z_r=a}\omega_r d_{a,r}/\sum_r\omega_r\) is checkpoint-adjusted remaining work and \(\rho_a\) is the activation fraction, predicted team cost is:
 
 $$
-C(S,z)=\sum_{a\in S}\widehat c_a\left[\rho+(1-\rho)w_a\right]
+C(S,z)=\sum_{a\in S}\widehat c_a\left[\rho_a+(1-\rho)w_a\right].
 $$
 
-The activation term covers setup and coordination while the workload term prevents a small requirement from being priced like the entire task. Production adapters can replace this model with token-, tool-, or milestone-level quotes.
+The default \(\rho\) is 0.15; already-active agents pay one quarter of that setup fraction. Requirement duration is multiplied by the same \(d_{a,r}\), so lost work affects cost and latency once. Production adapters can replace this model with token-, tool-, or milestone-level quotes.
 
-Pairwise Beta posteriors model explicitly evaluated collaboration evidence, while skill-vector similarity measures possible redundancy. Team-level success alone does not update pair beliefs. These are features rather than claims that the complete utility is submodular.
+Pairwise Beta posteriors model explicitly evaluated collaboration evidence, while skill-vector similarity measures possible redundancy. Team-level success alone does not update pair beliefs. These are implementation features rather than claims that the complete utility is submodular.
 
 ## 6. Learned success model
 
@@ -85,7 +99,7 @@ $$
 \widehat p(y=1\mid x,m,S,z,E)=\sigma\left(w_0+w^\top\phi(x,m,S,z,E)\right)
 $$
 
-Features currently include coverage, bottleneck satisfaction, contextual trust, pair synergy, redundancy, coordination loss, handoff loss, switching loss, and executor load. The model starts from configurable priors and applies regularized stochastic-gradient updates after real outcomes. `OnlineSuccessModel.randomized()` and `.zeroed()` expose weak-prior ablations so evaluation can separate the hand-written prior from learning.
+Features currently include assigned-owner coverage, bottleneck satisfaction, contextual trust, pair synergy, redundancy, coordination loss, and executor load. Route diagnostics also expose switching loss, but the default model does not separately weight lost work after checkpoint-adjusted cost and latency have already accounted for it. The model starts from configurable priors and applies regularized stochastic-gradient updates after outcomes. `OnlineSuccessModel.randomized()` and `.zeroed()` expose weak-prior ablations so evaluation can separate the hand-written prior from learning.
 
 This lightweight model is intentionally replaceable. Production deployments can substitute a GBDT, encoder model, Bayesian neural network, or offline contextual-bandit reward model while retaining the same constraint and search layers.
 
@@ -102,12 +116,12 @@ where:
 
 - \(\bar C\) and \(\bar L\) are budget- and deadline-normalized cost and latency;
 - \(R\) is contextual empirical risk;
-- \(H\) includes progress-dependent context-transfer loss;
+- \(H\) is fixed route-reconfiguration friction for detailed checkpoint states;
 - \(O\) is DAG communication overhead;
 - \(\mathcal U\) is posterior uncertainty;
 - \(\mathcal B\) is an optional exploration bonus.
 
-When a live route exists, switching loss depends on retained agents, progress, transferable context, and failure count. Replanning therefore becomes easier after repeated failures and harder after valuable non-transferable work has accumulated.
+For detailed checkpoint states, partial-work loss is represented by \(d_{a,r}\) in projected capability, cost, and duration rather than by another scalar penalty. \(H\) retains only fixed reconfiguration friction, discounted after repeated failures. The older coarse-state path remains available for integrations that only provide overall progress and transferable context.
 
 ## 8. Joint bounded team and role search
 
@@ -156,24 +170,23 @@ This avoids the previous unsupported `0.5 + overall - individual_mean` residual 
 
 The reference implementation can export these learned beliefs and model parameters as a versioned JSON snapshot. Restore requires an exact agent roster, which prevents evidence from silently attaching to a different marketplace population. Snapshot persistence does not make concurrent updates transactional and does not preserve the exploration random-generator state.
 
-## 10. Held-out synthetic benchmark and ablations
+## 10. Three separated synthetic studies
 
-`benchmark_evaluator.py` is isolated from SAGE scoring helpers. Its latent capabilities are independently specified rather than advertised skills plus small perturbations. Quality combines a weighted geometric mean and bottleneck, team compatibility is multiplicative, workload cost is nonlinear, and handoff loss has a different form from SAGE's switch loss. The default suite covers five seeds and 2,500 tasks. It compares:
+### 10.1 Checkpoint trajectory replay
 
-- incumbent-only execution;
-- advertised-skill single-agent routing;
-- a hidden-information solo oracle;
-- random and greedy team formation;
-- static SAGE without outcome updates;
-- learned SAGE without exploration;
-- learned SAGE with exploration;
-- learned SAGE from a weak random model prior.
+`benchmark_dynamic.py` generates execution events with completed DAG prefixes, an in-flight requirement, observed partial quality, artifact-specific portability, sunk resources, and occasional incumbent failure. `benchmark_dynamic_evaluator.py` does not call router scoring helpers and never maps scalar progress into a handoff penalty. It computes how much concrete work is reused or redone, then evaluates final geometric/bottleneck quality, multiplicative compatibility, added workload cost, recovery latency, wasted work, and deadline misses.
 
-The report includes common held-out quality-cost-latency utility, normalized resource use, deadline violations, route distribution, and first-versus-last 100-task learning windows. Static versus learned-no-exploration isolates updates; learned-no-exploration versus learned-exploration isolates the exploration policy; informed versus random initialization exposes prior sensitivity.
+The common action space includes progress-aware SAGE, an otherwise identical progress-masked SAGE, always-continue, always-handoff, static greedy team formation, bounded static coalition enumeration, and a hidden-state dynamic oracle. The default five-seed study replays 1,000 trajectories. It also performs a controlled intervention on near-substitutable research agents, holding task, registry, difficulty, portability, budget, and deadline fixed while changing only in-flight completion from 0.0 to 0.9.
 
-The benchmark is still synthetic and the environment remains designed by the repository authors. It is useful for regression and counterexamples, not evidence of external validity. Publishable evidence requires real task traces, heterogeneous A2A endpoints, additional learned and optimization baselines, calibration and regret analysis, safety tests, and repeated-execution confidence intervals.
+### 10.2 Requirement-conditioned trust convergence
 
-The command-line runner accepts explicit seeds and task counts and can emit a JSON summary containing population statistics, route mix, and model-update counts. This improves reproducibility but does not change the evidentiary status of the simulator.
+`benchmark_trust.py` compares the 0.35 global/0.65 requirement-conditioned trust representation with one global reputation score. Both receive the same exogenous round-robin observations, so exploration cost and policy feedback cannot explain their difference. A heterogeneous specialist scenario measures calibration and routing regret; a homogeneous negative control checks that contextual accounting does not manufacture a routing advantage when specialization is absent.
+
+### 10.3 Independent-task regression and learning ablations
+
+`benchmark.py` retains the structurally held-out 2,500-task regression suite. It compares solo, random-team, greedy-team, static SAGE, learned-no-exploration, learned-exploration, and weak-random-prior policies. Static versus learned-no-exploration isolates updates; learned-no-exploration versus learned-exploration isolates exploration; informed versus random initialization exposes prior sensitivity; first/last windows expose learning movement.
+
+All environments remain authored by the repository maintainers. They are useful for reproducibility, regression, and counterexamples, not evidence of external validity. Publishable evidence requires repeated checkpointed real executions, heterogeneous A2A endpoints, an independently governed artifact evaluator, safety tests, and confidence intervals. Every runner accepts explicit seeds and emits JSON so reported tables can be regenerated exactly.
 
 ## 11. Relationship to prior work
 

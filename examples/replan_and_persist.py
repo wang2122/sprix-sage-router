@@ -31,6 +31,11 @@ state = ExecutionState(
     active_agents=initial.agents,
     active_mode=initial.mode,
     progress=0.4,
+    active_assignments=initial.assignments,
+    inflight_requirement="coding",
+    inflight_progress=0.4,
+    inflight_quality=0.1,
+    artifact_transferability={"coding": 0.35},
     failed_agents=frozenset({"generalist"}),
     failure_count=1,
 )

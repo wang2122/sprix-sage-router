@@ -45,6 +45,29 @@ The returned `AgentCardProfile` retains card metadata for audit logs and exposes
 
 ## Routing trace and execution plan
 
+For an in-flight task, pass checkpoint-specific state instead of only an
+overall progress estimate:
+
+```python
+from sprix_sage import ExecutionState
+
+state = ExecutionState(
+    active_agents=("planner",),
+    active_assignments={"plan": "planner", "build": "planner"},
+    completed_requirements=frozenset({"plan"}),
+    inflight_requirement="build",
+    inflight_progress=0.60,
+    inflight_quality=0.74,
+    artifact_transferability={"plan": 0.95, "build": 0.40},
+)
+```
+
+`inflight_quality` must come from an artifact evaluator or another observable
+signal, not from the hidden benchmark profile. `artifact_transferability`
+should describe actual serialization, tool state, files, and context that a
+new owner can consume. When these fields are absent, SAGE falls back to its
+coarser overall-progress path for backward compatibility.
+
 ```python
 from sprix_a2a import execution_plan
 

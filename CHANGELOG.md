@@ -1,5 +1,30 @@
 # Changelog
 
+## Unreleased
+
+### Checkpoint-aware rerouting
+
+- add explicit in-flight requirement ownership, completion, observed partial
+  quality, and per-artifact portability to `ExecutionState`;
+- estimate candidate capability, cost, and latency from reusable work, while
+  charging reconfiguration loss once instead of duplicating it in the success
+  model and utility;
+- replace team noisy-OR coverage with assigned-owner checkpoint-adjusted
+  coverage so unassigned teammates do not receive quality credit.
+
+### Focused research evaluation
+
+- add a controlled progress intervention and 1,000-event trajectory replay
+  with progress-masked, always-continue, always-handoff, static greedy,
+  static-coalition, and dynamic-oracle baselines;
+- add a held-out artifact/remaining-work evaluator that does not call router
+  switch-loss helpers;
+- add a shared-observation convergence study for per-requirement trust versus
+  one reputation score, including a homogeneous negative control;
+- narrow the documented contribution to checkpoint-aware mid-execution
+  rerouting and explicitly demote standard coalition, utility, search, belief,
+  and online-learning components.
+
 ## 0.3.0 - 2026-08-28
 
 ### Benchmark rigor

@@ -192,6 +192,50 @@ class SAGERouterTests(unittest.TestCase):
         self.assertTrue(math.isinf(task.budget))
         self.assertTrue(math.isinf(task.deadline_ms))
 
+    def test_checkpoint_state_rejects_progress_without_inflight_requirement(self) -> None:
+        with self.assertRaisesRegex(ValueError, "requires inflight_requirement"):
+            ExecutionState(inflight_progress=0.4)
+
+    def test_checkpoint_reuse_can_change_a_handoff_into_continuation(self) -> None:
+        agents = [
+            Agent("current", {"code": 0.70}, 0.02, 300),
+            Agent("specialist", {"code": 0.93}, 0.04, 420),
+        ]
+        task = Task(
+            "checkpoint",
+            (Requirement("code", minimum=0.65),),
+            budget=0.20,
+            deadline_ms=2000,
+            handoff_friction=0.70,
+            context_transferability=0.10,
+        )
+        router = SAGERouter(agents, "current")
+        early = router.route(
+            task,
+            state=ExecutionState(
+                active_agents=("current",),
+                active_assignments={"code": "current"},
+                inflight_requirement="code",
+                inflight_progress=0.0,
+                artifact_transferability={"code": 0.10},
+            ),
+        )
+        late = router.route(
+            task,
+            state=ExecutionState(
+                active_agents=("current",),
+                active_assignments={"code": "current"},
+                inflight_requirement="code",
+                inflight_progress=0.90,
+                inflight_quality=0.85,
+                artifact_transferability={"code": 0.10},
+            ),
+        )
+
+        self.assertEqual(early.mode, Mode.HANDOFF)
+        self.assertEqual(late.mode, Mode.SELF)
+        self.assertLess(late.cost, early.cost)
+
     def test_pair_synergy_requires_explicit_pair_evidence(self) -> None:
         agents = [
             Agent("current", {"planning": 0.9, "coding": 0.2}, 0.02, 300),
@@ -444,7 +488,7 @@ class SAGERouterTests(unittest.TestCase):
             ),
             value=5.0,
             budget=1.0,
-            deadline_ms=680,
+            deadline_ms=550,
             coordination_overhead=0.10,
         )
 

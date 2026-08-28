@@ -109,6 +109,11 @@ class ExecutionState:
     completed_requirements: frozenset[str] = frozenset()
     progress: float | None = None
     transferable_context: float | None = None
+    active_assignments: Mapping[str, str] = field(default_factory=dict)
+    inflight_requirement: str | None = None
+    inflight_progress: float = 0.0
+    inflight_quality: float | None = None
+    artifact_transferability: Mapping[str, float] = field(default_factory=dict)
     failed_agents: frozenset[str] = frozenset()
     failure_count: int = 0
 
@@ -117,6 +122,16 @@ class ExecutionState:
             raise ValueError("state progress must be in [0, 1]")
         if self.transferable_context is not None and not 0 <= self.transferable_context <= 1:
             raise ValueError("transferable_context must be in [0, 1]")
+        if not 0 <= self.inflight_progress <= 1:
+            raise ValueError("inflight_progress must be in [0, 1]")
+        if self.inflight_quality is not None and not 0 <= self.inflight_quality <= 1:
+            raise ValueError("inflight_quality must be in [0, 1]")
+        if self.inflight_requirement is None and self.inflight_progress:
+            raise ValueError("inflight_progress requires inflight_requirement")
+        if self.inflight_requirement is None and self.inflight_quality is not None:
+            raise ValueError("inflight_quality requires inflight_requirement")
+        if any(not 0 <= value <= 1 for value in self.artifact_transferability.values()):
+            raise ValueError("artifact transferability values must be in [0, 1]")
         if self.failure_count < 0:
             raise ValueError("failure_count must be non-negative")
 

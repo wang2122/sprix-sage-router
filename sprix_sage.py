@@ -409,12 +409,25 @@ class SAGERouter:
 
     def _validate_state(self, task: Task, state: ExecutionState) -> None:
         requirement_names = {item.name for item in task.requirements}
-        unknown_requirements = set(state.completed_requirements) - requirement_names
-        unknown_agents = (set(state.active_agents) | set(state.failed_agents)) - set(self.agents)
+        referenced_requirements = (
+            set(state.completed_requirements)
+            | set(state.active_assignments)
+            | set(state.artifact_transferability)
+        )
+        if state.inflight_requirement is not None:
+            referenced_requirements.add(state.inflight_requirement)
+        unknown_requirements = referenced_requirements - requirement_names
+        unknown_agents = (
+            set(state.active_agents)
+            | set(state.failed_agents)
+            | set(state.active_assignments.values())
+        ) - set(self.agents)
         if unknown_requirements:
-            raise ValueError(f"unknown completed requirements: {sorted(unknown_requirements)}")
+            raise ValueError(f"unknown requirements in execution state: {sorted(unknown_requirements)}")
         if unknown_agents:
             raise ValueError(f"unknown agents in execution state: {sorted(unknown_agents)}")
+        if state.inflight_requirement in state.completed_requirements:
+            raise ValueError("inflight requirement cannot already be complete")
         if state.completed_requirements == requirement_names:
             raise RuntimeError("task is already complete")
 
@@ -588,6 +601,56 @@ class SAGERouter:
     def _remaining_requirements(self, task: Task, state: ExecutionState) -> tuple[Requirement, ...]:
         return tuple(item for item in task.requirements if item.name not in state.completed_requirements)
 
+    @staticmethod
+    def _active_owner(requirement: str, state: ExecutionState) -> str | None:
+        owner = state.active_assignments.get(requirement)
+        if owner is not None:
+            return owner
+        if requirement == state.inflight_requirement and len(state.active_agents) == 1:
+            return state.active_agents[0]
+        return None
+
+    @staticmethod
+    def _artifact_transferability(
+        requirement: str,
+        task: Task,
+        state: ExecutionState,
+    ) -> float:
+        if requirement in state.artifact_transferability:
+            return state.artifact_transferability[requirement]
+        if state.transferable_context is not None:
+            return state.transferable_context
+        return task.context_transferability
+
+    def _reused_fraction(
+        self,
+        requirement: str,
+        assigned_agent: str,
+        task: Task,
+        state: ExecutionState,
+    ) -> float:
+        if requirement != state.inflight_requirement:
+            return 0.0
+        owner = self._active_owner(requirement, state)
+        if owner == assigned_agent and owner not in state.failed_agents:
+            return state.inflight_progress
+        transferability = self._artifact_transferability(requirement, task, state)
+        return state.inflight_progress * transferability
+
+    def _remaining_fraction(
+        self,
+        requirement: str,
+        assigned_agent: str,
+        task: Task,
+        state: ExecutionState,
+    ) -> float:
+        return 1.0 - self._reused_fraction(
+            requirement,
+            assigned_agent,
+            task,
+            state,
+        )
+
     def _coverage_and_assignment(
         self,
         team: tuple[str, ...],
@@ -603,18 +666,38 @@ class SAGERouter:
         resolved_assignments: dict[str, str] = {}
         trust_total = uncertainty_total = 0.0
         for requirement in requirements:
-            skills = {
-                agent_id: self._effective_skill(agent_id, requirement.name, bids[agent_id])
-                for agent_id in team
-            }
-            miss = math.prod(1.0 - score for score in skills.values())
-            coverage = 1.0 - miss
+            owner = self._active_owner(requirement.name, state)
+            owner_skill = (
+                state.inflight_quality
+                if (
+                    requirement.name == state.inflight_requirement
+                    and state.inflight_quality is not None
+                )
+                else self._effective_skill(owner, requirement.name, bids[owner])
+                if owner is not None and owner in bids
+                else 0.0
+            )
+            skills: dict[str, float] = {}
+            for agent_id in team:
+                new_skill = self._effective_skill(
+                    agent_id,
+                    requirement.name,
+                    bids[agent_id],
+                )
+                reused = self._reused_fraction(
+                    requirement.name,
+                    agent_id,
+                    task,
+                    state,
+                )
+                skills[agent_id] = reused * owner_skill + (1.0 - reused) * new_skill
             assigned_agent = (
                 assignments[requirement.name]
                 if assignments is not None
                 else max(skills, key=lambda agent_id: skills[agent_id])
             )
             assigned_skill = skills[assigned_agent]
+            coverage = assigned_skill
             resolved_assignments[requirement.name] = assigned_agent
             weighted += requirement.weight * coverage
             bottlenecks.append(
@@ -675,12 +758,19 @@ class SAGERouter:
                 self._risk_adjusted_latency(agent_id, bids[agent_id])
                 * item.weight
                 / total_weight
+                * self._remaining_fraction(item.name, agent_id, task, state)
             )
             finish[item.name] = start + duration
             agent_ready[agent_id] = finish[item.name]
             for dependency in item.depends_on:
-                dependency_agent = assignments.get(dependency)
-                if dependency_agent and dependency_agent != agent_id:
+                dependency_agent = assignments.get(dependency) or state.active_assignments.get(
+                    dependency
+                )
+                if (
+                    dependency_agent is not None
+                    and dependency_agent in assignments.values()
+                    and dependency_agent != agent_id
+                ):
                     topology.add((dependency_agent, agent_id))
 
         if not processed_weight:
@@ -805,12 +895,22 @@ class SAGERouter:
             agent_id = assignments[item.name]
             dependency_ready = max((finish[name] for name in item.depends_on), default=0.0)
             start = max(dependency_ready, agent_ready[agent_id])
-            duration = self._risk_adjusted_latency(agent_id, bids[agent_id]) * item.weight / total_weight
+            duration = (
+                self._risk_adjusted_latency(agent_id, bids[agent_id])
+                * item.weight
+                / total_weight
+                * self._remaining_fraction(item.name, agent_id, task, state)
+            )
             finish[item.name] = start + duration
             agent_ready[agent_id] = finish[item.name]
             for dependency in item.depends_on:
-                dependency_agent = assignments.get(dependency)
-                if dependency_agent and dependency_agent != agent_id:
+                dependency_agent = assignments.get(dependency) or state.active_assignments.get(
+                    dependency
+                )
+                if (
+                    dependency_agent in team
+                    and dependency_agent != agent_id
+                ):
                     topology.add((dependency_agent, agent_id))
 
         used_agents = set(team)
@@ -852,7 +952,14 @@ class SAGERouter:
         latency *= 1.0 + task.coordination_overhead * cross_agent_edges
         return latency, tuple(sorted(topology))
 
-    def _switch_loss(self, mode: Mode, team: tuple[str, ...], task: Task, state: ExecutionState) -> float:
+    def _switch_loss(
+        self,
+        mode: Mode,
+        team: tuple[str, ...],
+        assignments: Mapping[str, str],
+        task: Task,
+        state: ExecutionState,
+    ) -> float:
         if not state.active_agents:
             if mode is Mode.HANDOFF:
                 progress = task.progress if state.progress is None else state.progress
@@ -865,6 +972,15 @@ class SAGERouter:
             return 0.0
         if mode == state.active_mode and set(team) == set(state.active_agents):
             return 0.0
+        if (
+            state.inflight_requirement is not None
+            and state.inflight_requirement in assignments
+        ):
+            # Lost in-flight work is already reflected in projected coverage,
+            # remaining cost, and remaining latency.  Keep only the fixed
+            # reconfiguration overhead here to avoid charging it twice.
+            recovery_discount = 1.0 / (1.0 + state.failure_count)
+            return task.replan_friction * recovery_discount
         union = set(team) | set(state.active_agents)
         retained = len(set(team) & set(state.active_agents)) / max(1, len(union))
         progress = task.progress if state.progress is None else state.progress
@@ -925,7 +1041,7 @@ class SAGERouter:
         latency, topology = self._schedule(team, assignments, task, bids, state)
         cost = self._assignment_cost(team, assignments, task, bids, state)
         coordination_loss = task.coordination_overhead * len(topology) if mode is Mode.COLLABORATE else 0.0
-        switch_loss = self._switch_loss(mode, team, task, state)
+        switch_loss = self._switch_loss(mode, team, assignments, task, state)
         handoff_loss = switch_loss if mode is Mode.HANDOFF else 0.0
         mean_load = sum(self.agents[agent_id].load for agent_id in team) / len(team)
         features = {
@@ -935,7 +1051,6 @@ class SAGERouter:
             "synergy": synergy,
             "redundancy": redundancy,
             "coordination_loss": coordination_loss,
-            "handoff_loss": handoff_loss,
             "switch_loss": switch_loss,
             "load": mean_load,
         }
@@ -1000,11 +1115,21 @@ class SAGERouter:
         total_weight = sum(item.weight for item in requirements)
         assigned_weight = {agent_id: 0.0 for agent_id in team}
         for item in requirements:
-            assigned_weight[assignments[item.name]] += item.weight
+            agent_id = assignments[item.name]
+            assigned_weight[agent_id] += item.weight * self._remaining_fraction(
+                item.name,
+                agent_id,
+                task,
+                state,
+            )
         return sum(
             self._risk_adjusted_cost(agent_id, bids[agent_id])
             * (
-                self.cost_activation_fraction
+                (
+                    0.25 * self.cost_activation_fraction
+                    if agent_id in state.active_agents
+                    else self.cost_activation_fraction
+                )
                 + (1.0 - self.cost_activation_fraction)
                 * assigned_weight[agent_id]
                 / total_weight
