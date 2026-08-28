@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "sprix-sage-router"
 version = "0.3.0"
-description = "Progress-aware constrained routing and task-DAG scheduling for A2A agent networks"
+description = "Checkpoint-aware mid-execution rerouting for A2A agent networks"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
@@ -56,6 +56,9 @@ files = [
   "sprix_a2a.py",
   "benchmark.py",
   "benchmark_evaluator.py",
+  "benchmark_dynamic.py",
+  "benchmark_dynamic_evaluator.py",
+  "benchmark_trust.py",
   "benchmark_scaling.py",
   "demo.py",
   "examples",
